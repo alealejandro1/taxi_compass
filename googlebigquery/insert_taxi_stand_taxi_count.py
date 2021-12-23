@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import requests
 from datetime import datetime
+from google.cloud import bigquery
+
 
 with open('../raw_data/lta-taxi-stop-geojson.geojson') as geofile:
     '''
@@ -101,3 +103,18 @@ def count_taxis_in_ts():
     })
     # tmp_taxi_stand_counter
     return ts_df.merge(tmp_taxi_stand_counter)
+
+def gcp_load_df_into_bigquery():
+    client = bigquery.Client(project='taxi-compass-lewagon')
+    table_id = 'api_dataset.h_taxi_stand_taxi_count'
+
+    job = client.load_table_from_dataframe(df, table_id)
+
+    job.result()  # Wait for the job to complete.
+
+    table = client.get_table(table_id)  # Make an API request.
+    print("Loaded {} rows and {} columns to {}".format(table.num_rows,
+                                                       len(table.schema),
+                                                       table_id))
+
+if __name__ == "__main__":
