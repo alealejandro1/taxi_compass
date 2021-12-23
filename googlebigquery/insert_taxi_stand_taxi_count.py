@@ -4,6 +4,7 @@ import numpy as np
 import requests
 from datetime import datetime
 from google.cloud import bigquery
+from requests.api import get
 
 
 with open('../raw_data/lta-taxi-stop-geojson.geojson') as geofile:
@@ -75,6 +76,9 @@ def count_taxis_in_ts():
     have how many taxis. Return a dataframe that counts taxis per taxi stands
 
     This information is the core training data for machine learning models
+
+    Cutoff distance represents how near a taxi to a taxi stand is consider
+    inside the taxi stand. Cutoff distance of 0.1 represents 100m = 0.1km
     '''
     taxi_url = "https://api.data.gov.sg/v1/transport/taxi-availability"
     r = requests.get(taxi_url)
@@ -82,7 +86,7 @@ def count_taxis_in_ts():
     timestamp_str = r.json()['features'][0]['properties']['timestamp']
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S+08:00')
 
-    cutoff_distance = 0.1
+    cutoff_distance = 0.1 # Measured in km
 
     ts_counter = dict(
         zip(ts_df['ts_id'].tolist(), [0 for _ in ts_df['ts_id'].tolist()]))
@@ -104,7 +108,10 @@ def count_taxis_in_ts():
     # tmp_taxi_stand_counter
     return ts_df.merge(tmp_taxi_stand_counter)
 
-def gcp_load_df_into_bigquery():
+def gcp_load_df_into_bigquery(df):
+    '''
+    Write a dataframe into google bigquery
+    '''
     client = bigquery.Client(project='taxi-compass-lewagon')
     table_id = 'api_dataset.h_taxi_stand_taxi_count'
 
@@ -118,3 +125,7 @@ def gcp_load_df_into_bigquery():
                                                        table_id))
 
 if __name__ == "__main__":
+
+    ts_df = get_taxi_stands()
+    tstc = count_taxis_in_ts()
+    gcp_load_df_into_bigquery(tstc)
