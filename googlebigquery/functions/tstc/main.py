@@ -6,7 +6,7 @@ from datetime import datetime
 from google.cloud import bigquery, storage
 
 
-def get_taxi_stands():
+def get_taxi_stands(taxi_stands_json):
     '''
     Parse the geojson with taxi stands into a set of taxi stand id and lat,lon
     This information is static, so no timestamp is required
@@ -60,7 +60,7 @@ def find_nearest_taxi_stand(taxi_lat=1.281261, taxi_lon=103.846358):
     return df.iloc[:10]
 
 
-def count_taxis_in_ts():
+def count_taxis_in_ts(ts_df):
     '''
     First retrieve the taxi coordinates using the LTA API for available taxis
 
@@ -141,21 +141,13 @@ def taxi_stop_taxi_count(request):
         Take geojson file provided by LTA where the taxi stands coordinates are provided
         '''
         taxi_stands_json = json.load(geofile)
+        print('loaded json successfully from bucket')
 
-    ts_df = get_taxi_stands()
-    tstc = count_taxis_in_ts()
+    ts_df = get_taxi_stands(taxi_stands_json)
+    tstc = count_taxis_in_ts(ts_df)
     gcp_load_df_into_bigquery(tstc)
 
     return ("Done!", 200)
-
-
-## Requirements
-# google-cloud-bigquery==2.31.0
-# numpy==1.18.5
-# pandas==1.3.1
-# requests==2.26.0
-# pyarrow==6.0.1
-# json
 
 
 ## Requirements
