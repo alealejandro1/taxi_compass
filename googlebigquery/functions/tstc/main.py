@@ -25,6 +25,27 @@ def get_taxi_stands(taxi_stands_json):
     ts_df = pd.DataFrame(taxi_stands_dict)
     return ts_df
 
+def get_taxi_coordinates_from_lta():
+    '''
+    LTA DATAMALL provides up to 500 rows of taxi info,
+    so we need to run the API call several times until we have
+    aggregated all results. All the taxi coordinates aggregated will
+    be returned by this function
+    '''
+    taxi_coordinates = []
+    for index in range(20):
+        skip = 0 + 500 * index
+        #     print(f'skip at {skip}')
+        uri = f'http://datamall2.mytransport.sg/ltaodataservice/Taxi-Availability?$skip={skip}'
+        headers = {
+            'AccountKey': 'BehS/IpVR0KOFQ+BgFqM5g==',
+            'accept': 'application/json'
+        }  #this is by default
+        r = requests.get(url=uri, headers=headers).json()
+        if len(requests.get(url=uri, headers=headers).json()["value"]) == 0:
+            break
+        taxi_coordinates += r['value']
+    return taxi_coordinates
 
 def find_nearest_taxi_stand(taxi_lat=1.281261, taxi_lon=103.846358):
     '''
@@ -72,11 +93,16 @@ def count_taxis_in_ts(ts_df):
     Cutoff distance represents how near a taxi to a taxi stand is consider
     inside the taxi stand. Cutoff distance of 0.1 represents 100m = 0.1km
     '''
-    taxi_url = "https://api.data.gov.sg/v1/transport/taxi-availability"
-    r = requests.get(taxi_url)
-    coordinates = r.json()["features"][0]["geometry"]["coordinates"]
-    timestamp_str = r.json()['features'][0]['properties']['timestamp']
-    timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S+08:00')
+
+    ### Older method using GOV.SG API, no longer working
+    # taxi_url = "https://api.data.gov.sg/v1/transport/taxi-availability"
+    # r = requests.get(taxi_url)
+    # coordinates = r.json()["features"][0]["geometry"]["coordinates"]
+    # timestamp_str = r.json()['features'][0]['properties']['timestamp']
+    # timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S+08:00')
+
+    coordinates=get_taxi_coordinates_from_lta()
+    timestamp=datetime.now()
 
     cutoff_distance = 0.1  # Measured in km
 
