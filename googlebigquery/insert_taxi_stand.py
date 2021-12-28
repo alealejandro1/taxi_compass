@@ -38,7 +38,7 @@ def get_taxi_stand_stop_df():
 
     taxi_stop_df['taxi_pln_area'] = taxi_stop_df.apply(lambda x: get_planning_area_loc(x["taxi_st_lat"], x["taxi_st_lon"]), axis=1)
 
-    return taxi_stop_df[['taxi_st_type','taxi_st_lat', 'taxi_st_lon', 'taxi_pln_area']]
+    return taxi_stop_df[['Name','taxi_st_type','taxi_st_lat', 'taxi_st_lon', 'taxi_pln_area']].rename(columns={"Name":"taxi_st_id"})
 
 if __name__ == "__main__":
 
