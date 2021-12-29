@@ -57,7 +57,8 @@ def find_nearest_taxi_stand(taxi_lat=1.281261, taxi_lon=103.846358):
     Python wise we'll be using broadcasting method, so we do the difference of all taxi stands (ts)
     with a given taxi_lat and taxi_lon in one shot, not in a for loop.
     '''
-
+    taxi_lat = np.float64(taxi_lat)
+    taxi_lon = np.float64(taxi_lon)
     taxi_lat_rad = np.deg2rad(taxi_lat)
     taxi_lon_rad = np.deg2rad(taxi_lon)
 
@@ -102,7 +103,7 @@ def count_taxis_in_ts(ts_df):
     # timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S+08:00')
 
     coordinates=get_taxi_coordinates_from_lta()
-    timestamp=datetime.now()
+    timestamp = datetime.datetime.now() + datetime.timedelta(hours=8) # Singapore time
 
     cutoff_distance = 0.1  # Measured in km
 
