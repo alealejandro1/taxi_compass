@@ -2,7 +2,7 @@ import json
 import pandas as pd
 import numpy as np
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from google.cloud import bigquery, storage
 
 
@@ -47,7 +47,7 @@ def get_taxi_coordinates_from_lta():
         taxi_coordinates += r['value']
     return taxi_coordinates
 
-def find_nearest_taxi_stand(taxi_lat=1.281261, taxi_lon=103.846358):
+def find_nearest_taxi_stand(ts_df,taxi_lat=1.281261, taxi_lon=103.846358):
     '''
     Given all the static positions of the nearby taxi stands
     we can get the distance with all of them, and return the nearest 10 taxi stands.
@@ -103,16 +103,17 @@ def count_taxis_in_ts(ts_df):
     # timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S+08:00')
 
     coordinates=get_taxi_coordinates_from_lta()
-    timestamp = datetime.datetime.now() + datetime.timedelta(hours=8) # Singapore time
+    timestamp = datetime.now() + timedelta(hours=8) # Singapore time
 
-    cutoff_distance = 0.1  # Measured in km
+    cutoff_distance = 0.200  # Measured in km
 
     ts_counter = dict(
         zip(ts_df['ts_id'].tolist(), [0 for _ in ts_df['ts_id'].tolist()]))
 
     for taxi_coordinates in coordinates:
-        lon, lat = taxi_coordinates
-        d_df = find_nearest_taxi_stand(lat, lon)
+        lon = taxi_coordinates['Longitude']
+        lat = taxi_coordinates['Latitude']
+        d_df = find_nearest_taxi_stand(ts_df, lat, lon)
         d_df = d_df[d_df['distance'] < cutoff_distance]
         for ts in d_df['ts_id'].tolist():
             ts_counter[ts] += 1
