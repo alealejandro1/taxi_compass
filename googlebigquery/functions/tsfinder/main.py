@@ -56,7 +56,7 @@ def find_nearest_taxi_stand(ts_df,taxi_lat=1.281261, taxi_lon=103.846358):
     df = ts_df.copy()
     df['distance'] = distance
     df.sort_values(by='distance', inplace=True)
-    return df[['ts_id']].iloc[:10].tolist()
+    return df[['ts_id']].iloc[:10].values.flatten().tolist()
 
 
 # if __name__ == "__main__":
@@ -90,7 +90,7 @@ def taxi_stop_finder(request):
     ts_df = get_taxi_stands(taxi_stands_json)
     nearby_taxi_stands = find_nearest_taxi_stand(ts_df, taxi_lat, taxi_lon)
 
-    return (nearby_taxi_stands, 200)
+    return ('-'.join(nearby_taxi_stands), 200)
 
 
 ## Requirements
@@ -100,3 +100,5 @@ def taxi_stop_finder(request):
 # requests==2.26.0
 # pyarrow==6.0.1
 # json
+
+# Testing: {"latitude":1.281260 , "longitude":103.8443}
