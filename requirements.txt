@@ -19,6 +19,8 @@ yapf
 # API
 gcsfs
 google-cloud-storage
+google-cloud-bigquery
+google-cloud
 mlflow
 s3fs
 google.cloud
