@@ -15,7 +15,8 @@ def get_coordinates():
     '''
     g = geocoder.ip('me')
     coordinates = g.latlng
-    return coordinates
+    # return coordinates
+    return [1.3148,103.82]
 
 def SQL_Query(taxi_stands_string):
     '''
@@ -96,7 +97,7 @@ if st.button('Press to Retrieve Nearby Taxi Count Predictions'):
     m = folium.Map(location=[
         st.session_state.coordinates[0], st.session_state.coordinates[1]
     ],
-                   zoom_start=13)
+                   zoom_start=14)
     folium.Marker(
         location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
