@@ -30,6 +30,9 @@ streamlit
 folium
 streamlit_folium
 geocoder
+bokeh
+streamlit_bokeh_events
+
 
 # utilities
 six>=1.14
