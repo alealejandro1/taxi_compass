@@ -25,8 +25,8 @@ def SQL_Query(taxi_stands_string):
     # This info should be kept in params. Credentials not needed when running
     # from within the GCP
     taxi_stand_tuple = tuple(taxi_stands_string.split('-'))
-    bq_key_path = '/Users/alejandroseif/Documents/GCP/BigQuerykey/taxi-compass-lewagon-0548ea55c10c.json'
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
+    #bq_key_path = '/Users/alejandroseif/Documents/GCP/BigQuerykey/taxi-compass-lewagon-0548ea55c10c.json'
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
     bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 
     QUERY_TS_LIST = f"""

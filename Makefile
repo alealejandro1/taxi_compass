@@ -55,6 +55,13 @@ pypi:
 	@twine upload dist/* -u $(PYPI_USERNAME)
 
 # ----------------------------------
+#          RUN STREAMLIT
+# ----------------------------------
+
+run_streamlit:
+	streamlit run app.py
+
+# ----------------------------------
 #      UPLOAD PACKAGE TO GCP
 # ----------------------------------
 

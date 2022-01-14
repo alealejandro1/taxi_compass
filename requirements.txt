@@ -29,6 +29,9 @@ google-api-core
 google-auth
 mlflow
 s3fs
+
+streamlit
+folium
 requests
 
 # utilities
