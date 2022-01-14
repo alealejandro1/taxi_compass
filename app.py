@@ -84,7 +84,7 @@ result = streamlit_bokeh_events(loc_button,
 if result:
     if "GET_LOCATION" in result:
         coordinates = result.get("GET_LOCATION")
-        # st.write(result.get("GET_LOCATION"))
+        st.write(f'Location obtained!')
         st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
 
