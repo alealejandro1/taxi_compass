@@ -33,8 +33,8 @@ def SQL_Query(taxi_stands_string):
     # from within the GCP
     taxi_stand_tuple = tuple(taxi_stands_string.split('-'))
     #bq_key_path = '/Users/alejandroseif/Documents/GCP/BigQuerykey/taxi-compass-lewagon-0548ea55c10c.json'
-    bq_key_path= '/Users/alejandroseif/Downloads/taxi-compass-lewagon-3e9d99da8c64.json'
-    #bq_key_path = 'google-credentials.json' ## Env variable in Heroku
+    # bq_key_path= '/Users/alejandroseif/Downloads/taxi-compass-lewagon-3e9d99da8c64.json'
+    bq_key_path = 'google-credentials.json' ## Env variable in Heroku
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
     bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 
