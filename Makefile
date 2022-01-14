@@ -54,5 +54,28 @@ pypi_test:
 pypi:
 	@twine upload dist/* -u $(PYPI_USERNAME)
 
+# ----------------------------------
+#          RUN STREAMLIT
+# ----------------------------------
+
 run_streamlit:
 	streamlit run app.py
+
+# ----------------------------------
+#      UPLOAD PACKAGE TO GCP
+# ----------------------------------
+
+# project id - replace with your GCP project id
+PROJECT_ID=taxi-compass-lewagon
+
+# bucket name - replace with your GCP bucket name
+BUCKET_NAME=gcf-sources-588878948076-asia-southeast1
+
+# choose your region from https://cloud.google.com/storage/docs/locations#available_locations
+REGION=asia-southeast1
+
+set_project:
+    @gcloud config set project ${PROJECT_ID}
+
+create_bucket:
+    @gsutil mb -l ${REGION} -p ${PROJECT_ID} gs://${BUCKET_NAME}

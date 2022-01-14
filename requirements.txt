@@ -8,6 +8,9 @@ wheel>=0.29
 numpy
 pandas
 scikit-learn
+xgboost
+tensorflow
+keras-tuner
 
 # tests/linter
 black
@@ -20,6 +23,9 @@ yapf
 gcsfs
 google-cloud-storage
 google-cloud-bigquery
+google-cloud-bigquery-storage
+google-api-core
+google-auth
 google-cloud
 mlflow
 s3fs
@@ -33,9 +39,10 @@ geocoder
 bokeh
 streamlit_bokeh_events
 
-
 # utilities
 six>=1.14
 joblib
 memoized-property
 termcolor
+math
+datetime
