@@ -8,6 +8,10 @@ from google.cloud import bigquery
 from streamlit_folium import folium_static
 import folium
 import requests
+from bokeh.models.widgets import Button
+from bokeh.models import CustomJS
+from streamlit_bokeh_events import streamlit_bokeh_events
+
 
 def get_coordinates():
     '''
@@ -15,7 +19,10 @@ def get_coordinates():
     '''
     g = geocoder.ip('me')
     coordinates = g.latlng
-    return coordinates
+    # return coordinates
+    return [1.3148,103.82]
+
+
 
 def SQL_Query(taxi_stands_string):
     '''
@@ -26,7 +33,9 @@ def SQL_Query(taxi_stands_string):
     # from within the GCP
     taxi_stand_tuple = tuple(taxi_stands_string.split('-'))
     #bq_key_path = '/Users/alejandroseif/Documents/GCP/BigQuerykey/taxi-compass-lewagon-0548ea55c10c.json'
-    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
+    bq_key_path= '/Users/alejandroseif/Downloads/taxi-compass-lewagon-3e9d99da8c64.json'
+    #bq_key_path = 'google-credentials.json' ## Env variable in Heroku
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
     bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 
     QUERY_TS_LIST = f"""
@@ -55,34 +64,57 @@ st.markdown("""# Taxi Compass
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
+loc_button = Button(label="Get Location")
+loc_button.js_on_event(
+    "button_click",
+    CustomJS(code="""
+    navigator.geolocation.getCurrentPosition(
+        (loc) => {
+            document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
+        }
+    )
+    """))
+result = streamlit_bokeh_events(loc_button,
+                                events="GET_LOCATION",
+                                key="get_location",
+                                refresh_on_update=False,
+                                override_height=75,
+                                debounce_time=0)
 
-if st.button('Press to retrieve your coordinates'):
-    # print is visible in the server output, not in the page
-    st.session_state.coordinates = get_coordinates()
-    now = datetime.now()
-    current_time = now.strftime("%H:%M:%S")
-    st.write(f'Coordinates obtained @ {current_time}! \
-        Lat:{st.session_state.coordinates[0]} Long:{st.session_state.coordinates[1]}'
-             )
-    m = folium.Map(location=[
-        st.session_state.coordinates[0], st.session_state.coordinates[1]
-    ],
-                   zoom_start=13)
+if result:
+    if "GET_LOCATION" in result:
+        coordinates = result.get("GET_LOCATION")
+        st.write(f'Location obtained!')
+        st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
-    folium.Marker(
-        location=[
-            st.session_state.coordinates[0], st.session_state.coordinates[1]
-        ],
-        popup='You are here',
-        icon=folium.Icon(color="darkblue", icon="car"),
-    ).add_to(m)
-    folium_static(m)
+
+# if st.button('Press to retrieve your coordinates'):
+#     # print is visible in the server output, not in the page
+#     st.session_state.coordinates = get_coordinates()
+#     now = datetime.now()
+#     current_time = now.strftime("%H:%M:%S")
+#     st.write(f'Coordinates obtained @ {current_time}! \
+#         Lat:{st.session_state.coordinates[0]} Long:{st.session_state.coordinates[1]}'
+#              )
+#     m = folium.Map(location=[
+#         st.session_state.coordinates[0], st.session_state.coordinates[1]
+#     ],
+#                    zoom_start=13)
+
+#     folium.Marker(
+#         location=[
+#             st.session_state.coordinates[0], st.session_state.coordinates[1]
+#         ],
+#         popup='You are here',
+#         icon=folium.Icon(color="darkblue", icon="car"),
+#     ).add_to(m)
+#     folium_static(m)
 
 if st.button('Press to Retrieve Nearby Taxi Count Predictions'):
     # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
     # SQL query from prediction table, filter by Nearby Taxi Stands
     st.write(f'The following are your nearby taxi stands, their \
-                current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               )
+                current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     )
     ## First get nearby taxi stands using the cloud function tsfinder:
     r = requests.post(
         'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
@@ -96,7 +128,7 @@ if st.button('Press to Retrieve Nearby Taxi Count Predictions'):
     m = folium.Map(location=[
         st.session_state.coordinates[0], st.session_state.coordinates[1]
     ],
-                   zoom_start=13)
+                   zoom_start=14)
     folium.Marker(
         location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]

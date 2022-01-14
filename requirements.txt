@@ -24,15 +24,20 @@ gcsfs
 google-cloud-storage
 google-cloud-bigquery
 google-cloud-bigquery-storage
-google-cloud-core
 google-api-core
 google-auth
+google-cloud
 mlflow
 s3fs
+google.cloud
 
+#Streamlit libraries
 streamlit
 folium
-requests
+streamlit_folium
+geocoder
+bokeh
+streamlit_bokeh_events
 
 # utilities
 six>=1.14
