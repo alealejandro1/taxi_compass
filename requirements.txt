@@ -25,7 +25,7 @@ mlflow
 s3fs
 google.cloud
 
-#Streamlit related
+#Streamlit libraries
 streamlit
 folium
 streamlit_folium
