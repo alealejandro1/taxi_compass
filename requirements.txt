@@ -21,8 +21,12 @@ gcsfs
 google-cloud-storage
 mlflow
 s3fs
+
+#Streamlit related
 streamlit
 folium
+streamlit_folium
+geocoder
 
 # utilities
 six>=1.14
