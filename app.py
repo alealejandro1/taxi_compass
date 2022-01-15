@@ -32,7 +32,17 @@ def SQL_Query(taxi_stands_string):
     ORDER BY timestamp DESC
     LIMIT {len(taxi_stand_tuple)}
     """
-    query_job = bigquery_client.query(QUERY_TS_LIST)
+
+    QUERY_TS_PRED =f"""
+    SELECT p.taxi_st_id as ts_id, p.taxi_count_pred as prediction, p.minute as minute,
+    c.taxi_st_lat as latitude, c.taxi_st_lat as longitude
+    FROM `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred` as p
+    LEFT JOIN `taxi-compass-lewagon.api_dataset.c_taxi_stand` as c
+    ON p.taxi_st_id = c.taxi_st_id
+    WHERE minute = {taxi_length} AND p.taxi_st_id in {taxi_stand_tuple}
+    """
+
+    query_job = bigquery_client.query(QUERY_TS_PRED)
     query_df = query_job.to_dataframe()
     return query_df
 
@@ -88,7 +98,7 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    )
+                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is computed on tsfinder cloud function
         ## using taxi_length parameter in POST
@@ -122,19 +132,19 @@ if result:
 
         for index,row in results_df.iterrows():
             folium.Marker(
-                location=[row.lat, row.lon],
+                location=[row.latitude, row.longitude],
                 popup=
-                f'Available/Predicted Taxi Count here: {row.taxi_count},{row.taxi_count}',
+                f'Predicted Taxi Count here: {row.prediction}',
                 icon=folium.Icon(color=color_guide(row.taxi_count),
                                  icon="car"),
             ).add_to(m)
 
-            folium.CircleMarker(location=[row.lat, row.lon],
-                                radius=15,
-                                color=color_guide(row.taxi_count),
-                                stroke=True,
-                                weight=30,
-                                opacity=0.1 + 0.2 * row.taxi_count).add_to(m)
+            # folium.CircleMarker(location=[row.lat, row.lon],
+            #                     radius=15,
+            #                     color=color_guide(row.taxi_count),
+            #                     stroke=True,
+            #                     weight=30,
+            #                     opacity=0.1 + 0.2 * row.taxi_count).add_to(m)
 
 
         ####
@@ -181,7 +191,7 @@ if result:
     <li><span style='background:lightgreen;opacity:0.7;'></span>No Taxis</li>
     <li><span style='background:green;opacity:0.7;'></span>Few Taxis</li>
     <li><span style='background:blue;opacity:0.7;'></span>Several Taxis</li>
-    <li><span style='background:black;opacity:0.7;'></span>Don't</li>
+    <li><span style='background:black;opacity:0.7;'></span>Lots of Taxis</li>
 
   </ul>
 </div>
