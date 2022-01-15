@@ -37,9 +37,14 @@ def SQL_Query(taxi_stands_string):
     return query_df
 
 def color_guide(count):
-    colors = {0:'lightgreen', 1:'green',2:'darkgreen',3:'pink',
-              4:'lightblue',5:'darkblue',6:'purple'}
-    if count > 6:
+    colors = {
+        0: 'lightgreen',
+        1: 'green',
+        2: 'green',
+        3: 'blue',
+        4: 'blue'
+    }
+    if count > 4:
         return 'black'
     else:
         return colors[count]
@@ -52,7 +57,7 @@ if "coordinates" not in st.session_state:
 ### Radio Button for search range
 time_df = pd.DataFrame({'first column': list([5, 10, 15])})
 taxi_length = st.selectbox('Select how many minutes in the future you want to predict',time_df)
-st.write(f'Option selected is {taxi_length}')
+st.write(f'You will be getting the nearest {taxi_length} taxi stops')
 ###
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
@@ -83,9 +88,10 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                )
+                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              )
         ## First get nearby taxi stands using the cloud function tsfinder:
-        ## Amount of taxi stands returned is hardcoded on tsfinder cloud function
+        ## Amount of taxi stands returned is computed on tsfinder cloud function
+        ## using taxi_length parameter in POST
         r = requests.post(
             'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
             json={
@@ -93,7 +99,7 @@ if result:
                 "longitude": st.session_state.coordinates[1],
                 "length": taxi_length
             })
-        ## Pass the list of 10 nearby taxistands to perform the SQL Query
+        ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
         results_df = SQL_Query(r.text)
         #st.write(results_df[['ts_id','taxi_count']])
         m = folium.Map(location=[
