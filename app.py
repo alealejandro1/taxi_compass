@@ -88,7 +88,7 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
+                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is computed on tsfinder cloud function
         ## using taxi_length parameter in POST
@@ -123,18 +123,18 @@ if result:
         for index,row in results_df.iterrows():
             folium.Marker(
                 location=[row.lat, row.lon],
-                popup=f'Available Taxi Count here: {row.taxi_count}',
+                popup=
+                f'Available/Predicted Taxi Count here: {row.taxi_count},{row.taxi_count}',
                 icon=folium.Icon(color=color_guide(row.taxi_count),
                                  icon="car"),
             ).add_to(m)
 
             folium.CircleMarker(location=[row.lat, row.lon],
                                 radius=15,
-                                popup='Predicted Taxi Count Here:',
                                 color=color_guide(row.taxi_count),
                                 stroke=True,
                                 weight=30,
-                                opacity=0.5).add_to(m)
+                                opacity=0.1 + 0.2 * row.taxi_count).add_to(m)
 
 
         ####
