@@ -36,6 +36,10 @@ def SQL_Query(taxi_stands_string):
     return query_df
 
 def check_coordinates():
+    '''
+    Safety check to make sure you have tried to obtain coordinates
+    before making queries on taxi stands
+    '''
     if st.session_state.coordinates == ():
         st.write('Need to get location first!')
         return False
@@ -57,7 +61,9 @@ st.markdown("""# Taxi Compass
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
-loc_button = Button(label="First: Get Location")
+#############
+
+loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
 loc_button.js_on_event(
     "button_click",
     CustomJS(code="""
@@ -81,13 +87,13 @@ if result:
         st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
 
-if st.button('Second: Press to Retrieve Nearby Taxi Count Predictions'):
-    # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
-    # SQL query from prediction table, filter by Nearby Taxi Stands
-    if check_coordinates():
+        # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
+        # SQL query from prediction table, filter by Nearby Taxi Stands
+
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in 15min')
+                    current and predicted taxi count in 15min'                                                              )
         ## First get nearby taxi stands using the cloud function tsfinder:
+        ## Amount of taxi stands returned is hardcoded on tsfinder cloud function
         r = requests.post(
             'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
             json={
