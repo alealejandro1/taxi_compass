@@ -36,17 +36,6 @@ def SQL_Query(taxi_stands_string):
     query_df = query_job.to_dataframe()
     return query_df
 
-def check_coordinates():
-    '''
-    Safety check to make sure you have tried to obtain coordinates
-    before making queries on taxi stands
-    '''
-    if st.session_state.coordinates == ():
-        st.write('Need to get location first!')
-        return False
-    else:
-        return True
-
 def color_guide(count):
     colors = {0:'lightgreen', 1:'green',2:'darkgreen',3:'pink',
               4:'lightblue',5:'darkblue',6:'purple'}
@@ -60,6 +49,11 @@ st.markdown("""# Taxi Compass
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
+### Radio Button for search range
+time_df = pd.DataFrame({'first column': list([5, 10, 15])})
+taxi_length = st.selectbox('Select how many minutes in the future you want to predict',time_df)
+st.write(f'Option selected is {taxi_length}')
+###
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
 loc_button.js_on_event(
@@ -89,14 +83,15 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
+                    current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is hardcoded on tsfinder cloud function
         r = requests.post(
             'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
             json={
                 "latitude": st.session_state.coordinates[0],
-                "longitude": st.session_state.coordinates[1]
+                "longitude": st.session_state.coordinates[1],
+                "length": taxi_length
             })
         ## Pass the list of 10 nearby taxistands to perform the SQL Query
         results_df = SQL_Query(r.text)
@@ -117,7 +112,7 @@ if result:
         for index,row in results_df.iterrows():
             folium.Marker(
                 location=[row.lat, row.lon],
-                popup=f'There are {row.taxi_count} taxis here',
+                popup=f'Available Taxi Count here: {row.taxi_count}',
                 icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
             ).add_to(m)
 
