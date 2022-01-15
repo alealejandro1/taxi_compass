@@ -60,7 +60,6 @@ st.markdown("""# Taxi Compass
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
-#############
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
 loc_button.js_on_event(
@@ -100,7 +99,7 @@ if result:
                 "longitude": st.session_state.coordinates[1]
             })
         ## Pass the list of 10 nearby taxistands to perform the SQL Query
-        # results_df = SQL_Query(r.text)
+        results_df = SQL_Query(r.text)
         #st.write(results_df[['ts_id','taxi_count']])
         m = folium.Map(location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
@@ -115,21 +114,12 @@ if result:
             icon=folium.Icon(color="red", icon="car"),
         ).add_to(m)
 
-        folium.Marker(
-            location=[
-                st.session_state.coordinates[0]*1.0001,
-                st.session_state.coordinates[1]*0.9999
-            ],
-            popup='You are here',
-            icon=folium.Icon(color=color_guide(0), icon="car"),
-        ).add_to(m)
-
-        # for index,row in results_df.iterrows():
-        #     folium.Marker(
-        #         location=[row.lat, row.lon],
-        #         popup=f'There are {row.taxi_count} taxis here',
-        #         icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
-        #     ).add_to(m)
+        for index,row in results_df.iterrows():
+            folium.Marker(
+                location=[row.lat, row.lon],
+                popup=f'There are {row.taxi_count} taxis here',
+                icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
+            ).add_to(m)
 
 
         ####
