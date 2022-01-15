@@ -24,7 +24,11 @@ def get_taxi_stands(taxi_stands_json):
     ts_df = pd.DataFrame(taxi_stands_dict)
     return ts_df
 
-def find_nearest_taxi_stand(ts_df,taxi_lat=1.281261, taxi_lon=103.846358):
+
+def find_nearest_taxi_stand(ts_df,
+                            taxi_lat=1.281261,
+                            taxi_lon=103.846358,
+                            taxi_length=5):
     '''
     Given all the static positions of the nearby taxi stands
     we can get the distance with all of them, and return the nearest 10 taxi stands.
@@ -56,7 +60,7 @@ def find_nearest_taxi_stand(ts_df,taxi_lat=1.281261, taxi_lon=103.846358):
     df = ts_df.copy()
     df['distance'] = distance
     df.sort_values(by='distance', inplace=True)
-    return df[['ts_id']].iloc[:10].values.flatten().tolist()
+    return df[['ts_id']].iloc[:taxi_length].values.flatten().tolist()
 
 
 # if __name__ == "__main__":
@@ -87,8 +91,10 @@ def taxi_stop_finder(request):
     request_json = request.get_json()
     taxi_lat=request_json['latitude']
     taxi_lon=request_json['longitude']
+    taxi_length = request_json['length']
     ts_df = get_taxi_stands(taxi_stands_json)
-    nearby_taxi_stands = find_nearest_taxi_stand(ts_df, taxi_lat, taxi_lon)
+    nearby_taxi_stands = find_nearest_taxi_stand(ts_df, taxi_lat, taxi_lon,
+                                                 taxi_length)
 
     return ('-'.join(nearby_taxi_stands), 200)
 

@@ -11,18 +11,7 @@ import requests
 from bokeh.models.widgets import Button
 from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
-
-
-def get_coordinates():
-    '''
-    Get latitude and longitude based on your ISP substation location.
-    '''
-    g = geocoder.ip('me')
-    coordinates = g.latlng
-    # return coordinates
-    return [1.3148,103.82]
-
-
+from branca.element import Template, MacroElement
 
 def SQL_Query(taxi_stands_string):
     '''
@@ -32,9 +21,7 @@ def SQL_Query(taxi_stands_string):
     # This info should be kept in params. Credentials not needed when running
     # from within the GCP
     taxi_stand_tuple = tuple(taxi_stands_string.split('-'))
-    #bq_key_path = '/Users/alejandroseif/Documents/GCP/BigQuerykey/taxi-compass-lewagon-0548ea55c10c.json'
-    bq_key_path= '/Users/alejandroseif/Downloads/taxi-compass-lewagon-3e9d99da8c64.json'
-    #bq_key_path = 'google-credentials.json' ## Env variable in Heroku
+    bq_key_path = 'google-credentials.json' ## Env variable in Heroku
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
     bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 
@@ -45,26 +32,45 @@ def SQL_Query(taxi_stands_string):
     ORDER BY timestamp DESC
     LIMIT {len(taxi_stand_tuple)}
     """
-    query_job = bigquery_client.query(QUERY_TS_LIST)
+
+    QUERY_TS_PRED =f"""
+    SELECT p.taxi_st_id as ts_id, p.taxi_count_pred as prediction, p.minute as minute,
+    c.taxi_st_lat as latitude, c.taxi_st_lon as longitude
+    FROM `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred` as p
+    LEFT JOIN `taxi-compass-lewagon.api_dataset.c_taxi_stand` as c
+    ON p.taxi_st_id = c.taxi_st_id
+    WHERE minute = {taxi_length} AND p.taxi_st_id in {taxi_stand_tuple}
+    """
+
+    query_job = bigquery_client.query(QUERY_TS_PRED)
     query_df = query_job.to_dataframe()
     return query_df
 
 def color_guide(count):
-    if count == 0:
-        return 'green'
-    if count >= 1 and count < 3:
-        return 'darkgreen'
-    if count >= 3 and count < 6:
-        return 'orange'
-    else:
+    colors = {
+        0: 'lightgreen',
+        1: 'green',
+        2: 'green',
+        3: 'blue',
+        4: 'blue'
+    }
+    if count > 4:
         return 'black'
+    else:
+        return colors[count]
 
 st.markdown("""# Taxi Compass
 ## Want to find out what the taxi count is in nearby taxi stands?""")
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
-loc_button = Button(label="Get Location")
+### Radio Button for search range
+time_df = pd.DataFrame({'first column': list([5, 10, 15])})
+taxi_length = st.selectbox('Select how many minutes in the future you want to predict',time_df)
+st.write(f'You will be getting the nearest {taxi_length} taxi stops')
+###
+
+loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
 loc_button.js_on_event(
     "button_click",
     CustomJS(code="""
@@ -88,59 +94,158 @@ if result:
         st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
 
-# if st.button('Press to retrieve your coordinates'):
-#     # print is visible in the server output, not in the page
-#     st.session_state.coordinates = get_coordinates()
-#     now = datetime.now()
-#     current_time = now.strftime("%H:%M:%S")
-#     st.write(f'Coordinates obtained @ {current_time}! \
-#         Lat:{st.session_state.coordinates[0]} Long:{st.session_state.coordinates[1]}'
-#              )
-#     m = folium.Map(location=[
-#         st.session_state.coordinates[0], st.session_state.coordinates[1]
-#     ],
-#                    zoom_start=13)
+        # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
+        # SQL query from prediction table, filter by Nearby Taxi Stands
 
-#     folium.Marker(
-#         location=[
-#             st.session_state.coordinates[0], st.session_state.coordinates[1]
-#         ],
-#         popup='You are here',
-#         icon=folium.Icon(color="darkblue", icon="car"),
-#     ).add_to(m)
-#     folium_static(m)
+        st.write(f'The following are your nearby taxi stands, their \
+                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       )
+        ## First get nearby taxi stands using the cloud function tsfinder:
+        ## Amount of taxi stands returned is computed on tsfinder cloud function
+        ## using taxi_length parameter in POST
+        r = requests.post(
+            'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
+            json={
+                "latitude": st.session_state.coordinates[0],
+                "longitude": st.session_state.coordinates[1],
+                "length": taxi_length
+            })
+        ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
+        results_df = SQL_Query(r.text)
+        # results_df = pd.DataFrame({})
 
-if st.button('Press to Retrieve Nearby Taxi Count Predictions'):
-    # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
-    # SQL query from prediction table, filter by Nearby Taxi Stands
-    st.write(f'The following are your nearby taxi stands, their \
-                current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     )
-    ## First get nearby taxi stands using the cloud function tsfinder:
-    r = requests.post(
-        'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
-        json={
-            "latitude": st.session_state.coordinates[0],
-            "longitude": st.session_state.coordinates[1]
-        })
-    ## Pass the list of 10 nearby taxistands to perform the SQL Query
-    results_df = SQL_Query(r.text)
-    #st.write(results_df[['ts_id','taxi_count']])
-    m = folium.Map(location=[
-        st.session_state.coordinates[0], st.session_state.coordinates[1]
-    ],
-                   zoom_start=14)
-    folium.Marker(
-        location=[
+        m = folium.Map(location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
         ],
-        popup='You are here',
-        icon=folium.Icon(color="darkblue", icon="car"),
-    ).add_to(m)
+                       zoom_start=14,
+                       tiles='openstreetmap')
 
-    for index,row in results_df.iterrows():
         folium.Marker(
-            location=[row.lat, row.lon],
-            popup=f'There are {row.taxi_count} taxis here',
-            icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
+            location=[
+                st.session_state.coordinates[0],
+                st.session_state.coordinates[1]
+            ],
+            popup='You are here',
+            icon=folium.Icon(color="red", icon="car", prefix='fa'),
         ).add_to(m)
-    folium_static(m)
+
+
+
+        for index,row in results_df.iterrows():
+            folium.Marker(
+                location=[row.latitude, row.longitude],
+                popup=f'Predicted Taxi Count here: {row.prediction}',
+                icon=folium.Icon(color=color_guide(row.prediction),
+                                 icon="car"),
+            ).add_to(m)
+
+            # folium.CircleMarker(location=[row.latitude, row.longitude],
+            #                     radius=15,
+            #                     color=color_guide(row.prediction),
+            #                     stroke=True,
+            #                     weight=30,
+            #                     opacity=0.1 + 0.2 * row.prediction).add_to(m)
+
+
+        ####
+        template = """
+{% macro html(this, kwargs) %}
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jQuery UI Draggable - Default functionality</title>
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+  <script>
+  $( function() {
+    $( "#maplegend" ).draggable({
+                    start: function (event, ui) {
+                        $(this).css({
+                            right: "auto",
+                            top: "auto",
+                            bottom: "auto"
+                        });
+                    }
+                });
+});
+
+  </script>
+</head>
+<body>
+
+
+<div id='maplegend' class='maplegend'
+    style='position: absolute; z-index:9999; border:2px solid grey; background-color:rgba(255, 255, 255, 0.8);
+     border-radius:6px; padding: 10px; font-size:14px; right: 20px; bottom: 20px;'>
+
+<div class='legend-title'>Legend</div>
+<div class='legend-scale'>
+  <ul class='legend-labels'>
+    <li><span style='background:red;opacity:0.7;'></span>You</li>
+    <li><span style='background:lightgreen;opacity:0.7;'></span>No Taxis</li>
+    <li><span style='background:green;opacity:0.7;'></span>Few Taxis</li>
+    <li><span style='background:blue;opacity:0.7;'></span>Several Taxis</li>
+    <li><span style='background:black;opacity:0.7;'></span>Lots of Taxis</li>
+
+  </ul>
+</div>
+</div>
+
+</body>
+</html>
+
+<style type='text/css'>
+  .maplegend .legend-title {
+    text-align: left;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 90%;
+    }
+  .maplegend .legend-scale ul {
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+    float: left;
+    list-style: none;
+    }
+  .maplegend .legend-scale ul li {
+    font-size: 80%;
+    list-style: none;
+    margin-left: 0;
+    line-height: 18px;
+    margin-bottom: 2px;
+    }
+  .maplegend ul.legend-labels li span {
+    display: block;
+    float: left;
+    height: 16px;
+    width: 30px;
+    margin-right: 5px;
+    margin-left: 0;
+    border: 1px solid #999;
+    }
+  .maplegend .legend-source {
+    font-size: 80%;
+    color: #777;
+    clear: both;
+    }
+  .maplegend a {
+    color: #777;
+    }
+</style>
+{% endmacro %}"""
+
+        macro = MacroElement()
+        macro._template = Template(template)
+
+        # m.get_root().add_child(macro)
+        macro.add_to(m)
+
+        ###
+
+        folium_static(m)
