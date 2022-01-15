@@ -12,18 +12,6 @@ from bokeh.models.widgets import Button
 from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 
-
-def get_coordinates():
-    '''
-    Get latitude and longitude based on your ISP substation location.
-    '''
-    g = geocoder.ip('me')
-    coordinates = g.latlng
-    # return coordinates
-    return [1.3148,103.82]
-
-
-
 def SQL_Query(taxi_stands_string):
     '''
     Takes a taxi_stand_list and performs a query on the latest
@@ -32,8 +20,6 @@ def SQL_Query(taxi_stands_string):
     # This info should be kept in params. Credentials not needed when running
     # from within the GCP
     taxi_stand_tuple = tuple(taxi_stands_string.split('-'))
-    #bq_key_path = '/Users/alejandroseif/Documents/GCP/BigQuerykey/taxi-compass-lewagon-0548ea55c10c.json'
-    # bq_key_path= '/Users/alejandroseif/Downloads/taxi-compass-lewagon-3e9d99da8c64.json'
     bq_key_path = 'google-credentials.json' ## Env variable in Heroku
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
     bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
@@ -48,6 +34,13 @@ def SQL_Query(taxi_stands_string):
     query_job = bigquery_client.query(QUERY_TS_LIST)
     query_df = query_job.to_dataframe()
     return query_df
+
+def check_coordinates():
+    if st.session_state.coordinates == ():
+        st.write('Need to get location first!')
+        return False
+    else:
+        return True
 
 def color_guide(count):
     if count == 0:
@@ -64,7 +57,7 @@ st.markdown("""# Taxi Compass
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
-loc_button = Button(label="Get Location")
+loc_button = Button(label="First: Get Location")
 loc_button.js_on_event(
     "button_click",
     CustomJS(code="""
@@ -88,59 +81,38 @@ if result:
         st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
 
-# if st.button('Press to retrieve your coordinates'):
-#     # print is visible in the server output, not in the page
-#     st.session_state.coordinates = get_coordinates()
-#     now = datetime.now()
-#     current_time = now.strftime("%H:%M:%S")
-#     st.write(f'Coordinates obtained @ {current_time}! \
-#         Lat:{st.session_state.coordinates[0]} Long:{st.session_state.coordinates[1]}'
-#              )
-#     m = folium.Map(location=[
-#         st.session_state.coordinates[0], st.session_state.coordinates[1]
-#     ],
-#                    zoom_start=13)
-
-#     folium.Marker(
-#         location=[
-#             st.session_state.coordinates[0], st.session_state.coordinates[1]
-#         ],
-#         popup='You are here',
-#         icon=folium.Icon(color="darkblue", icon="car"),
-#     ).add_to(m)
-#     folium_static(m)
-
-if st.button('Press to Retrieve Nearby Taxi Count Predictions'):
+if st.button('Second: Press to Retrieve Nearby Taxi Count Predictions'):
     # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
     # SQL query from prediction table, filter by Nearby Taxi Stands
-    st.write(f'The following are your nearby taxi stands, their \
-                current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     )
-    ## First get nearby taxi stands using the cloud function tsfinder:
-    r = requests.post(
-        'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
-        json={
-            "latitude": st.session_state.coordinates[0],
-            "longitude": st.session_state.coordinates[1]
-        })
-    ## Pass the list of 10 nearby taxistands to perform the SQL Query
-    results_df = SQL_Query(r.text)
-    #st.write(results_df[['ts_id','taxi_count']])
-    m = folium.Map(location=[
-        st.session_state.coordinates[0], st.session_state.coordinates[1]
-    ],
-                   zoom_start=14)
-    folium.Marker(
-        location=[
+    if check_coordinates():
+        st.write(f'The following are your nearby taxi stands, their \
+                    current and predicted taxi count in 15min')
+        ## First get nearby taxi stands using the cloud function tsfinder:
+        r = requests.post(
+            'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
+            json={
+                "latitude": st.session_state.coordinates[0],
+                "longitude": st.session_state.coordinates[1]
+            })
+        ## Pass the list of 10 nearby taxistands to perform the SQL Query
+        results_df = SQL_Query(r.text)
+        #st.write(results_df[['ts_id','taxi_count']])
+        m = folium.Map(location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
         ],
-        popup='You are here',
-        icon=folium.Icon(color="darkblue", icon="car"),
-    ).add_to(m)
-
-    for index,row in results_df.iterrows():
+                    zoom_start=14)
         folium.Marker(
-            location=[row.lat, row.lon],
-            popup=f'There are {row.taxi_count} taxis here',
-            icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
+            location=[
+                st.session_state.coordinates[0], st.session_state.coordinates[1]
+            ],
+            popup='You are here',
+            icon=folium.Icon(color="darkblue", icon="car"),
         ).add_to(m)
-    folium_static(m)
+
+        for index,row in results_df.iterrows():
+            folium.Marker(
+                location=[row.lat, row.lon],
+                popup=f'There are {row.taxi_count} taxis here',
+                icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
+            ).add_to(m)
+        folium_static(m)
