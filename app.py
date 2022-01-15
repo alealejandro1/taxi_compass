@@ -11,6 +11,7 @@ import requests
 from bokeh.models.widgets import Button
 from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
+from branca.element import Template, MacroElement
 
 def SQL_Query(taxi_stands_string):
     '''
@@ -47,14 +48,12 @@ def check_coordinates():
         return True
 
 def color_guide(count):
-    if count == 0:
-        return 'green'
-    if count >= 1 and count < 3:
-        return 'darkgreen'
-    if count >= 3 and count < 6:
-        return 'orange'
-    else:
+    colors = {0:'lightgreen', 1:'green',2:'darkgreen',3:'pink',
+              4:'lightblue',5:'darkblue',6:'purple'}
+    if count > 6:
         return 'black'
+    else:
+        return colors[count]
 
 st.markdown("""# Taxi Compass
 ## Want to find out what the taxi count is in nearby taxi stands?""")
@@ -91,7 +90,7 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in 15min'                                                              )
+                    current and predicted taxi count in 15min'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is hardcoded on tsfinder cloud function
         r = requests.post(
@@ -101,24 +100,138 @@ if result:
                 "longitude": st.session_state.coordinates[1]
             })
         ## Pass the list of 10 nearby taxistands to perform the SQL Query
-        results_df = SQL_Query(r.text)
+        # results_df = SQL_Query(r.text)
         #st.write(results_df[['ts_id','taxi_count']])
         m = folium.Map(location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
         ],
-                    zoom_start=14)
+                       zoom_start=14,
+                       tiles='openstreetmap')
         folium.Marker(
             location=[
                 st.session_state.coordinates[0], st.session_state.coordinates[1]
             ],
             popup='You are here',
-            icon=folium.Icon(color="darkblue", icon="car"),
+            icon=folium.Icon(color="red", icon="car"),
         ).add_to(m)
 
-        for index,row in results_df.iterrows():
-            folium.Marker(
-                location=[row.lat, row.lon],
-                popup=f'There are {row.taxi_count} taxis here',
-                icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
-            ).add_to(m)
+        folium.Marker(
+            location=[
+                st.session_state.coordinates[0]*1.0001,
+                st.session_state.coordinates[1]*0.9999
+            ],
+            popup='You are here',
+            icon=folium.Icon(color=color_guide(0), icon="car"),
+        ).add_to(m)
+
+        # for index,row in results_df.iterrows():
+        #     folium.Marker(
+        #         location=[row.lat, row.lon],
+        #         popup=f'There are {row.taxi_count} taxis here',
+        #         icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
+        #     ).add_to(m)
+
+
+        ####
+        template = """
+{% macro html(this, kwargs) %}
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jQuery UI Draggable - Default functionality</title>
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+  <script>
+  $( function() {
+    $( "#maplegend" ).draggable({
+                    start: function (event, ui) {
+                        $(this).css({
+                            right: "auto",
+                            top: "auto",
+                            bottom: "auto"
+                        });
+                    }
+                });
+});
+
+  </script>
+</head>
+<body>
+
+
+<div id='maplegend' class='maplegend'
+    style='position: absolute; z-index:9999; border:2px solid grey; background-color:rgba(255, 255, 255, 0.8);
+     border-radius:6px; padding: 10px; font-size:14px; right: 20px; bottom: 20px;'>
+
+<div class='legend-title'>Legend</div>
+<div class='legend-scale'>
+  <ul class='legend-labels'>
+    <li><span style='background:red;opacity:0.7;'></span>You</li>
+    <li><span style='background:lightgreen;opacity:0.7;'></span>No Taxis</li>
+    <li><span style='background:green;opacity:0.7;'></span>Few Taxis</li>
+    <li><span style='background:blue;opacity:0.7;'></span>Several Taxis</li>
+    <li><span style='background:black;opacity:0.7;'></span>Don't</li>
+
+  </ul>
+</div>
+</div>
+
+</body>
+</html>
+
+<style type='text/css'>
+  .maplegend .legend-title {
+    text-align: left;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 90%;
+    }
+  .maplegend .legend-scale ul {
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+    float: left;
+    list-style: none;
+    }
+  .maplegend .legend-scale ul li {
+    font-size: 80%;
+    list-style: none;
+    margin-left: 0;
+    line-height: 18px;
+    margin-bottom: 2px;
+    }
+  .maplegend ul.legend-labels li span {
+    display: block;
+    float: left;
+    height: 16px;
+    width: 30px;
+    margin-right: 5px;
+    margin-left: 0;
+    border: 1px solid #999;
+    }
+  .maplegend .legend-source {
+    font-size: 80%;
+    color: #777;
+    clear: both;
+    }
+  .maplegend a {
+    color: #777;
+    }
+</style>
+{% endmacro %}"""
+
+        macro = MacroElement()
+        macro._template = Template(template)
+
+        # m.get_root().add_child(macro)
+        macro.add_to(m)
+
+        ###
+
         folium_static(m)
