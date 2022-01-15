@@ -35,7 +35,7 @@ def SQL_Query(taxi_stands_string):
 
     QUERY_TS_PRED =f"""
     SELECT p.taxi_st_id as ts_id, p.taxi_count_pred as prediction, p.minute as minute,
-    c.taxi_st_lat as latitude, c.taxi_st_lat as longitude
+    c.taxi_st_lat as latitude, c.taxi_st_lon as longitude
     FROM `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred` as p
     LEFT JOIN `taxi-compass-lewagon.api_dataset.c_taxi_stand` as c
     ON p.taxi_st_id = c.taxi_st_id
