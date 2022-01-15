@@ -88,7 +88,7 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              )
+                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is computed on tsfinder cloud function
         ## using taxi_length parameter in POST
@@ -101,26 +101,40 @@ if result:
             })
         ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
         results_df = SQL_Query(r.text)
-        #st.write(results_df[['ts_id','taxi_count']])
+        # results_df = pd.DataFrame({})
+
         m = folium.Map(location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
         ],
                        zoom_start=14,
                        tiles='openstreetmap')
+
         folium.Marker(
             location=[
-                st.session_state.coordinates[0], st.session_state.coordinates[1]
+                st.session_state.coordinates[0],
+                st.session_state.coordinates[1]
             ],
             popup='You are here',
-            icon=folium.Icon(color="red", icon="car"),
+            icon=folium.Icon(color="red", icon="car", prefix='fa'),
         ).add_to(m)
+
+
 
         for index,row in results_df.iterrows():
             folium.Marker(
                 location=[row.lat, row.lon],
                 popup=f'Available Taxi Count here: {row.taxi_count}',
-                icon=folium.Icon(color=color_guide(row.taxi_count), icon="car"),
+                icon=folium.Icon(color=color_guide(row.taxi_count),
+                                 icon="car"),
             ).add_to(m)
+
+            folium.CircleMarker(location=[row.lat, row.lon],
+                                radius=15,
+                                popup='Predicted Taxi Count Here:',
+                                color=color_guide(row.taxi_count),
+                                stroke=True,
+                                weight=30,
+                                opacity=0.5).add_to(m)
 
 
         ####
