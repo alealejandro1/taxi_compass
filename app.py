@@ -13,17 +13,27 @@ from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 from branca.element import Template, MacroElement
 
+
+def SQL_prediction_date():
+    '''
+    Upon starting, take the distinct available dates for prediction
+    '''
+    QUERY_PREDICTION_TIME = f"""
+    Select distinct(datetime(timestamp(timestamp_pred,"Asia/Singapore"), "Asia/Singapore")) as pred_dates, timestamp_pred
+    from `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred`
+    where timestamp(timestamp_pred,"Asia/Singapore") > current_timestamp()
+    order by pred_dates asc
+    """
+    query_job = bigquery_client.query(QUERY_PREDICTION_TIME)
+    query_df = query_job.to_dataframe()
+    return query_df
+
 def SQL_Query(taxi_stands_string):
     '''
     Takes a taxi_stand_list and performs a query on the latest
     predictions on taxi_stand occupation
     '''
-    # This info should be kept in params. Credentials not needed when running
-    # from within the GCP
     taxi_stand_tuple = tuple(taxi_stands_string.split('-'))
-    bq_key_path = 'google-credentials.json' ## Env variable in Heroku
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
-    bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 
     QUERY_TS_LIST = f"""
     SELECT timestamp, ts_id, lat, lon, taxi_count
@@ -34,12 +44,12 @@ def SQL_Query(taxi_stands_string):
     """
 
     QUERY_TS_PRED =f"""
-    SELECT p.taxi_st_id as ts_id, p.taxi_count_pred as prediction, p.minute as minute,
+    SELECT p.taxi_st_id as ts_id, p.taxi_count_pred as prediction, p.timestamp_pred as timestamp_pred,
     c.taxi_st_lat as latitude, c.taxi_st_lon as longitude
     FROM `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred` as p
     LEFT JOIN `taxi-compass-lewagon.api_dataset.c_taxi_stand` as c
     ON p.taxi_st_id = c.taxi_st_id
-    WHERE minute = {taxi_length} AND p.taxi_st_id in {taxi_stand_tuple}
+    WHERE timestamp_pred = {time_df} AND p.taxi_st_id in {taxi_stand_tuple}
     """
 
     query_job = bigquery_client.query(QUERY_TS_PRED)
@@ -59,15 +69,26 @@ def color_guide(count):
     else:
         return colors[count]
 
+# Big Query setup
+# This info should be kept in params. Credentials not needed when running
+# from within the GCP
+bq_key_path = 'google-credentials.json'  ## Env variable in Heroku
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
+bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
+
 st.markdown("""# Taxi Compass
 ## Want to find out what the taxi count is in nearby taxi stands?""")
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
+prediction_date_df = SQL_prediction_date()
+
 ### Radio Button for search range
-time_df = pd.DataFrame({'first column': list([5, 10, 15])})
-taxi_length = st.selectbox('Select how many minutes in the future you want to predict',time_df)
-st.write(f'You will be getting the nearest {taxi_length} taxi stops')
+time_range_df = SQL_prediction_date()
+time_df = st.selectbox('Select what time in the future you want to predict', time_range_df)
+length_range = pd.DataFrame({'first column': list([5, 10, 15])})
+taxi_length = st.selectbox('Select what time in the future you want to predict',length_range)
+st.write(f'You will be getting the nearest {taxi_length} taxi stops at {time_df}')
 ###
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
@@ -98,7 +119,7 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       )
+                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is computed on tsfinder cloud function
         ## using taxi_length parameter in POST
