@@ -1,11 +1,10 @@
-from json import load
 import pandas as pd
 import numpy as np
-import datetime
 
-from google.cloud import bigquery, storage
+import googleapiclient.discovery
+from google.api_core.client_options import ClientOptions
 
-from tensorflow.keras import models
+from google.cloud import bigquery
 
 def get_data():
     bqclient = bigquery.Client()
@@ -18,7 +17,7 @@ def get_data():
     from (
     SELECT ts_id as taxi_st_id, taxi_count, cast(timestamp_trunc(timestamp, minute) as datetime) as taxi_update_time
     FROM `taxi-compass-lewagon.api_dataset.h_taxi_stand_taxi_count`
-    WHERE timestamp > TIMESTAMP_add(CURRENT_TIMESTAMP() , INTERVAL 449 minute)
+    WHERE timestamp > TIMESTAMP_add(CURRENT_TIMESTAMP() , INTERVAL 464 minute)
     ) a
     left join
     (
@@ -55,7 +54,7 @@ def get_data():
         )
     )
     
-    print("/ngbq query successful.../n")
+    print("gbq query successful...")
     return taxi_df_pred
 
 def get_weekday(time):
@@ -83,7 +82,7 @@ def preprocessing(taxi_df_pred):
     df["taxi_update_time"] = df["taxi_update_time"].dt.tz_localize("Asia/Singapore")
     df["weekend_bool"] = df.apply(lambda x : get_weekday(x["taxi_update_time"]), axis=1)
     
-    print("/npreprocessing succesful.../n")
+    print("preprocessing succesful...")
     
     return df
 
@@ -97,12 +96,11 @@ def array_creation(df):
         print(i+1,len(df.loc[df["taxi_st_num"] == i+1]), "started...")
         X = df.loc[df["taxi_st_num"] == i+1][["taxi_st_num","taxi_update_time","taxi_count", "rainfall","mrt_final_status",
                                             "weekend_bool","hr_sin","hr_cos","min_sin","min_cos"]].copy()
-        for day in range(1,16):
-            X[f"taxi_count_-{day}"] = X["taxi_count"].shift(day)
+
         X = X.dropna()
         X_pred = X[["taxi_st_num","taxi_update_time"]]
         
-        X = X.drop(columns=["taxi_st_num","taxi_update_time"]).to_numpy()
+        X = X.drop(columns=["taxi_update_time"]).to_numpy()
         
         X = X.reshape(1, X.shape[0], X.shape[1])
         
@@ -113,45 +111,64 @@ def array_creation(df):
             X_mas = np.vstack((X_mas, X))
             X_mas_pred = pd.concat([X_mas_pred, X_pred],ignore_index=True)
 
-    print("/narray creation successful.../n")
+    print("array creation successful...")
     
     return (X_mas, X_mas_pred)
 
-def load_tf_model():
-    BUCKET_NAME = 'static-file-storage'
-    BUCKET_MODEL_FOLDER_PATH = 'model/class_model'
+def predict_json(project, region, model, instances, version=None):
+    """Send json data to a deployed model for prediction.
 
-    # Add Client() here
-    storage_client = storage.Client()
-    path = f"gs://{BUCKET_NAME}/{BUCKET_MODEL_FOLDER_PATH}"
-    loaded_model = models.load_model(path)
-    print("/nmodel loading successful.../n")
-    
-    return loaded_model
+    Args:
+        project (str): project where the Cloud ML Engine Model is deployed.
+        region (str): regional endpoint to use; set to None for ml.googleapis.com
+        model (str): model name.
+        instances ([Mapping[str: Any]]): Keys should be the names of Tensors
+            your deployed model expects as inputs. Values should be datatypes
+            convertible to Tensors, or (potentially nested) lists of datatypes
+            convertible to tensors.
+        version: str, version of the model to target.
+    Returns:
+        Mapping[str: any]: dictionary of prediction results defined by the
+            model.
+    """
+    # Create the ML Engine service object.
+    # To authenticate set the environment variable
+    # GOOGLE_APPLICATION_CREDENTIALS=<path_to_service_account_file>
+    prefix = "{}-ml".format(region) if region else "ml"
+    api_endpoint = "https://{}.googleapis.com".format(prefix)
+    client_options = ClientOptions(api_endpoint=api_endpoint)
+    service = googleapiclient.discovery.build(
+        'ml', 'v1', client_options=client_options)
+    name = 'projects/{}/models/{}'.format(project, model)
+
+    if version is not None:
+        name += '/versions/{}'.format(version)
+
+    response = service.projects().predict(
+        name=name,
+        body={'instances': instances}
+    ).execute()
+
+    if 'error' in response:
+        raise RuntimeError(response['error'])
+
+    return response['predictions']
 
 def predict(X_mas, X_mas_pred):
-    BUCKET_NAME = 'static-file-storage'
-    BUCKET_MODEL_FOLDER_PATH = 'model/class_model'
-
-    # Add Client() here
-    storage_client = storage.Client()
-    path = f"gs://{BUCKET_NAME}/{BUCKET_MODEL_FOLDER_PATH}"
-    loaded_model = models.load_model(path)
-    print("/nmodel loading successful.../n")
+    PROJECT_ID = 'taxi-compass-lewagon'
+    REGION = "asia-southeast1"
+    MODEL = "xgb_class_model"
+    MODEL_VERSION = "version3"
     
-    loaded_model.predict(X_mas[0:1])
-    pred = np.argmax(loaded_model.predict(X_mas), axis=-1)
-    X_res = X_mas.reshape((X_mas.shape[0]*X_mas.shape[1],X_mas.shape[2]))
-    pred = pred.reshape((pred.shape[0]*pred.shape[1]))
+    X_mas1 = X_mas.reshape(X_mas.shape[0]*X_mas.shape[1], 9)
+    pred = predict_json(PROJECT_ID, REGION, MODEL, X_mas1.tolist() , version=MODEL_VERSION)
     X_mas_pred["timestamp_pred"] = X_mas_pred["taxi_update_time"].dt.tz_localize(None) + pd.to_timedelta(15, unit='m')
+    X_mas_pred["timestamp_pred"] = X_mas_pred["timestamp_pred"].astype(str)
     X_mas_pred["taxi_st_id"] = "kml_" + X_mas_pred["taxi_st_num"].astype("str")
-    X_mas_pred[["taxi_st_id","timestamp_pred"]]
     y_res = pd.concat((X_mas_pred[["taxi_st_id","timestamp_pred"]], pd.DataFrame(pred, columns=["taxi_count_pred"])), axis=1)
     y_res["minute"] = y_res.groupby(['taxi_st_id']).cumcount()+1
-    y_res = y_res[(y_res["minute"] == 5) | (y_res["minute"] == 10) | (y_res["minute"] == 15)].drop(columns="timestamp_pred").reset_index(drop=True)
-    y_res["update_time"] = (datetime.datetime.now() + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
     
-    print("/npredict successful.../n")
+    print("predict successful...")
     
     return y_res
 
@@ -163,9 +180,9 @@ def delete_all_rows():
     query_job = client.query(dml_statement)  # API request
     query_job.result()  # Waits for statement to finish
     
-    print("/ndelete successful.../n")
+    print("delete successful...")
     
-    return "/ndelete successful.../n"
+    return "delete successful..."
     
 def insert_rows(y_res):
     client = bigquery.Client(project='taxi-compass-lewagon')
@@ -179,7 +196,7 @@ def insert_rows(y_res):
 
     table = client.get_table(table_id)  # Make an API request.
 
-    print("/ninsert successful.../n")
+    print("insert successful...")
     
     return "insert successful..."
 
@@ -197,3 +214,4 @@ def predicted_count():
 
 if __name__ == "__main__":
     predicted_count()
+    
