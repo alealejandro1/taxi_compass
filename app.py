@@ -49,7 +49,7 @@ def SQL_Query(taxi_stands_string):
     FROM `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred` as p
     LEFT JOIN `taxi-compass-lewagon.api_dataset.c_taxi_stand` as c
     ON p.taxi_st_id = c.taxi_st_id
-    WHERE timestamp_pred = '{time_df}' AND p.taxi_st_id in {taxi_stand_tuple}
+    WHERE timestamp_pred = '{st.session_state.time_range}' AND p.taxi_st_id in {taxi_stand_tuple}
     """
 
     query_job = bigquery_client.query(QUERY_TS_PRED)
@@ -81,15 +81,24 @@ st.markdown("""# Taxi Compass
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
-prediction_date_df = SQL_prediction_date()
+if "prediction_date" not in st.session_state:
+    st.session_state.prediction_date_df = pd.DataFrame({})
+
+st.session_state.prediction_date_df = SQL_prediction_date()
+
+if "time_range" not in st.session_state:
+    st.session_state.time_range = ''
 
 ### Radio Button for search range
-time_range_df = SQL_prediction_date()
-time_df = st.selectbox('Select what time in the future you want to predict', time_range_df)
+time_range_df = st.session_state.prediction_date_df
+st.session_state.time_range = st.selectbox(
+    'Select what time in the future you want to predict', time_range_df)
 # length_range = pd.DataFrame({'first column': list([5, 10, 15])})
 # taxi_length = st.selectbox('Select how many taxi stands you want to see',length_range)
 taxi_length = 20
-st.write(f'You will be getting the nearest {taxi_length} taxi stops at {time_df}')
+st.write(
+    f'You will be getting the nearest {taxi_length} taxi stops at {st.session_state.time_range}'
+)
 ###
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
@@ -120,7 +129,7 @@ if result:
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands \
-                    predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 )
+                    predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is computed on tsfinder cloud function
         ## using taxi_length parameter in POST
