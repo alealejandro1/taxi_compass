@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import geocoder
 from datetime import datetime
 import os
 from google.cloud import bigquery
@@ -17,7 +16,9 @@ from branca.element import Template, MacroElement
 @st.cache()
 def SQL_prediction_date():
     '''
-    Upon starting, take the distinct available dates for prediction
+    Upon starting, take the distinct available dates for prediction.
+    This function needs only to be ran once, so cacheing it allows for
+    faster times anytime we interact with the streamlit page.
     '''
     QUERY_PREDICTION_TIME = f"""
     Select distinct(datetime(timestamp(timestamp_pred,"Asia/Singapore"), "Asia/Singapore")) as pred_dates, timestamp_pred
@@ -58,6 +59,10 @@ def SQL_Query(taxi_stands_string):
     return query_df
 
 def color_guide(count):
+    '''
+    This function is used to simplify visually the results by
+    assigning colors to different predicted taxi count in each taxi stand.
+    '''
     colors = {
         0: 'lightgreen',
         1: 'green',
@@ -70,12 +75,26 @@ def color_guide(count):
     else:
         return colors[count]
 
-# Big Query setup
-# This info should be kept in params. Credentials not needed when running
-# from within the GCP
+# ------------------------------------------------------------------------- #
+# ----------------------  BIG QUERY SETUP --------------------------------- #
+# ------------------------------------------------------------------------- #
+'''
+Relying on buildpacks and environmental variables in Heroku, it is possible
+to generate credentials so as to load them and provide the big query client
+the json file needed to allow working in the project
+'''
 bq_key_path = 'google-credentials.json'  ## Env variable in Heroku
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
 bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
+
+
+# ------------------------------------------------------------------------- #
+# --------------------------  STREAMLIT ----------------------------------- #
+# ------------------------------------------------------------------------- #
+'''
+Besides the markdown, variables are saved in session_state to avoid
+losing date in between radio button clicks in Streamlit.
+'''
 
 st.markdown("""# Taxi Compass
 ## What is the taxi count in nearby taxi stands?""")
@@ -94,13 +113,24 @@ if "time_range" not in st.session_state:
 time_range_df = st.session_state.prediction_date_df
 st.session_state.time_range = st.selectbox(
     'Select what time in the future you want to predict', time_range_df)
-# length_range = pd.DataFrame({'first column': list([5, 10, 15])})
-# taxi_length = st.selectbox('Select how many taxi stands you want to see',length_range)
+
 taxi_length = 20
 st.write(
     f'You will be getting the nearest {taxi_length} taxi stops at {st.session_state.time_range}'
 )
 ###
+
+# ------------------------------------------------------------------------- #
+# -------------------  LOCATION FROM BROWSER ------------------------------ #
+# ------------------------------------------------------------------------- #
+'''
+Here we'll rely on a JS action to obtain the coordinates from the user's browser.
+We need to rely on the browser, otherwise we'll get coordinate from the dyno
+location where Heroku has hosted our app.
+
+By creating a button, we can trigger a custom event to generate the coords.
+'''
+
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
 loc_button.js_on_event(
@@ -125,12 +155,15 @@ if result:
         st.write(f'Location obtained!')
         st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
+        # ------------------------------------------------------------------ #
+        # ----------------------- GET LATs AND LONs ------------------------ #
+        # ------------------------------------------------------------------ #
 
         # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
         st.write(f'The following are your nearby taxi stands \
-                    predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              )
+                    predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is computed on tsfinder cloud function
         ## using taxi_length parameter in POST
@@ -143,7 +176,10 @@ if result:
             })
         ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
         results_df = SQL_Query(r.text)
-        # results_df = pd.DataFrame({})
+
+        # ------------------------------------------------------------------ #
+        # -------------------- CREATION OF FOLIUM MAP ---------------------- #
+        # ------------------------------------------------------------------ #
 
         m = folium.Map(location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
@@ -160,8 +196,6 @@ if result:
             icon=folium.Icon(color="red", icon="car", prefix='fa'),
         ).add_to(m)
 
-
-
         for index,row in results_df.iterrows():
             folium.Marker(
                 location=[row.latitude, row.longitude],
@@ -170,15 +204,10 @@ if result:
                                  icon="car"),
             ).add_to(m)
 
-            # folium.CircleMarker(location=[row.latitude, row.longitude],
-            #                     radius=15,
-            #                     color=color_guide(row.prediction),
-            #                     stroke=True,
-            #                     weight=30,
-            #                     opacity=0.1 + 0.2 * row.prediction).add_to(m)
+        # ------------------------------------------------------------------ #
+        # -------------------- HTML for FOLIUM LEGEND ---------------------- #
+        # ------------------------------------------------------------------ #
 
-
-        ####
         template = """
 {% macro html(this, kwargs) %}
 
