@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import geocoder
 from datetime import datetime
 import os
 from google.cloud import bigquery
@@ -13,17 +12,30 @@ from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 from branca.element import Template, MacroElement
 
+
+@st.cache()
+def SQL_prediction_date():
+    '''
+    Upon starting, take the distinct available dates for prediction.
+    This function needs only to be ran once, so cacheing it allows for
+    faster times anytime we interact with the streamlit page.
+    '''
+    QUERY_PREDICTION_TIME = f"""
+    Select distinct(datetime(timestamp(timestamp_pred,"Asia/Singapore"), "Asia/Singapore")) as pred_dates, timestamp_pred
+    from `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred`
+    where timestamp(timestamp_pred,"Asia/Singapore") > current_timestamp()
+    order by pred_dates asc
+    """
+    query_job = bigquery_client.query(QUERY_PREDICTION_TIME)
+    query_df = query_job.to_dataframe()
+    return query_df
+
 def SQL_Query(taxi_stands_string):
     '''
     Takes a taxi_stand_list and performs a query on the latest
     predictions on taxi_stand occupation
     '''
-    # This info should be kept in params. Credentials not needed when running
-    # from within the GCP
     taxi_stand_tuple = tuple(taxi_stands_string.split('-'))
-    bq_key_path = 'google-credentials.json' ## Env variable in Heroku
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
-    bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 
     QUERY_TS_LIST = f"""
     SELECT timestamp, ts_id, lat, lon, taxi_count
@@ -34,12 +46,12 @@ def SQL_Query(taxi_stands_string):
     """
 
     QUERY_TS_PRED =f"""
-    SELECT p.taxi_st_id as ts_id, p.taxi_count_pred as prediction, p.minute as minute,
+    SELECT p.taxi_st_id as ts_id, p.taxi_count_pred as prediction, p.timestamp_pred as timestamp_pred,
     c.taxi_st_lat as latitude, c.taxi_st_lon as longitude
     FROM `taxi-compass-lewagon.api_dataset.r_taxi_stand_pred` as p
     LEFT JOIN `taxi-compass-lewagon.api_dataset.c_taxi_stand` as c
     ON p.taxi_st_id = c.taxi_st_id
-    WHERE minute = {taxi_length} AND p.taxi_st_id in {taxi_stand_tuple}
+    WHERE timestamp_pred = '{st.session_state.time_range}' AND p.taxi_st_id in {taxi_stand_tuple}
     """
 
     query_job = bigquery_client.query(QUERY_TS_PRED)
@@ -47,6 +59,10 @@ def SQL_Query(taxi_stands_string):
     return query_df
 
 def color_guide(count):
+    '''
+    This function is used to simplify visually the results by
+    assigning colors to different predicted taxi count in each taxi stand.
+    '''
     colors = {
         0: 'lightgreen',
         1: 'green',
@@ -59,16 +75,62 @@ def color_guide(count):
     else:
         return colors[count]
 
+# ------------------------------------------------------------------------- #
+# ----------------------  BIG QUERY SETUP --------------------------------- #
+# ------------------------------------------------------------------------- #
+'''
+Relying on buildpacks and environmental variables in Heroku, it is possible
+to generate credentials so as to load them and provide the big query client
+the json file needed to allow working in the project
+'''
+bq_key_path = 'google-credentials.json'  ## Env variable in Heroku
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
+bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
+
+
+# ------------------------------------------------------------------------- #
+# --------------------------  STREAMLIT ----------------------------------- #
+# ------------------------------------------------------------------------- #
+'''
+Besides the markdown, variables are saved in session_state to avoid
+losing date in between radio button clicks in Streamlit.
+'''
+
 st.markdown("""# Taxi Compass
-## Want to find out what the taxi count is in nearby taxi stands?""")
+## What is the taxi count in nearby taxi stands?""")
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
+if "prediction_date" not in st.session_state:
+    st.session_state.prediction_date_df = pd.DataFrame({})
+
+st.session_state.prediction_date_df = SQL_prediction_date()
+
+if "time_range" not in st.session_state:
+    st.session_state.time_range = ''
+
 ### Radio Button for search range
-time_df = pd.DataFrame({'first column': list([5, 10, 15])})
-taxi_length = st.selectbox('Select how many minutes in the future you want to predict',time_df)
-st.write(f'You will be getting the nearest {taxi_length} taxi stops')
+time_range_df = st.session_state.prediction_date_df
+st.session_state.time_range = st.selectbox(
+    'Select what time in the future you want to predict', time_range_df)
+
+taxi_length = 20
+st.write(
+    f'You will be getting the nearest {taxi_length} taxi stops at {st.session_state.time_range}'
+)
 ###
+
+# ------------------------------------------------------------------------- #
+# -------------------  LOCATION FROM BROWSER ------------------------------ #
+# ------------------------------------------------------------------------- #
+'''
+Here we'll rely on a JS action to obtain the coordinates from the user's browser.
+We need to rely on the browser, otherwise we'll get coordinate from the dyno
+location where Heroku has hosted our app.
+
+By creating a button, we can trigger a custom event to generate the coords.
+'''
+
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
 loc_button.js_on_event(
@@ -93,12 +155,15 @@ if result:
         st.write(f'Location obtained!')
         st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
+        # ------------------------------------------------------------------ #
+        # ----------------------- GET LATs AND LONs ------------------------ #
+        # ------------------------------------------------------------------ #
 
         # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
         # SQL query from prediction table, filter by Nearby Taxi Stands
 
-        st.write(f'The following are your nearby taxi stands, their \
-                    current and predicted taxi count in the next {taxi_length} minutes'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       )
+        st.write(f'The following are your nearby taxi stands \
+                    predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  )
         ## First get nearby taxi stands using the cloud function tsfinder:
         ## Amount of taxi stands returned is computed on tsfinder cloud function
         ## using taxi_length parameter in POST
@@ -111,7 +176,10 @@ if result:
             })
         ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
         results_df = SQL_Query(r.text)
-        # results_df = pd.DataFrame({})
+
+        # ------------------------------------------------------------------ #
+        # -------------------- CREATION OF FOLIUM MAP ---------------------- #
+        # ------------------------------------------------------------------ #
 
         m = folium.Map(location=[
             st.session_state.coordinates[0], st.session_state.coordinates[1]
@@ -128,8 +196,6 @@ if result:
             icon=folium.Icon(color="red", icon="car", prefix='fa'),
         ).add_to(m)
 
-
-
         for index,row in results_df.iterrows():
             folium.Marker(
                 location=[row.latitude, row.longitude],
@@ -138,15 +204,10 @@ if result:
                                  icon="car"),
             ).add_to(m)
 
-            # folium.CircleMarker(location=[row.latitude, row.longitude],
-            #                     radius=15,
-            #                     color=color_guide(row.prediction),
-            #                     stroke=True,
-            #                     weight=30,
-            #                     opacity=0.1 + 0.2 * row.prediction).add_to(m)
+        # ------------------------------------------------------------------ #
+        # -------------------- HTML for FOLIUM LEGEND ---------------------- #
+        # ------------------------------------------------------------------ #
 
-
-        ####
         template = """
 {% macro html(this, kwargs) %}
 
