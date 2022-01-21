@@ -13,7 +13,7 @@ from streamlit_bokeh_events import streamlit_bokeh_events
 from branca.element import Template, MacroElement
 
 
-@st.cache()
+# @st.cache()
 def SQL_prediction_date():
     '''
     Upon starting, take the distinct available dates for prediction.
