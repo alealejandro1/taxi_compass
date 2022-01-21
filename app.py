@@ -78,11 +78,11 @@ def color_guide(count):
 # ------------------------------------------------------------------------- #
 # ----------------------  BIG QUERY SETUP --------------------------------- #
 # ------------------------------------------------------------------------- #
-'''
-Relying on buildpacks and environmental variables in Heroku, it is possible
-to generate credentials so as to load them and provide the big query client
-the json file needed to allow working in the project
-'''
+# '''
+# Relying on buildpacks and environmental variables in Heroku, it is possible
+# to generate credentials so as to load them and provide the big query client
+# the json file needed to allow working in the project
+# '''
 bq_key_path = 'google-credentials.json'  ## Env variable in Heroku
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
 bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
@@ -91,20 +91,21 @@ bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 # ------------------------------------------------------------------------- #
 # --------------------------  STREAMLIT ----------------------------------- #
 # ------------------------------------------------------------------------- #
-'''
-Besides the markdown, variables are saved in session_state to avoid
-losing date in between radio button clicks in Streamlit.
-'''
+# '''
+# Besides the markdown, variables are saved in session_state to avoid
+# losing date in between radio button clicks in Streamlit.
+# '''
 
 st.markdown("""# Taxi Compass
 ## What is the taxi count in nearby taxi stands?""")
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
-if "prediction_date" not in st.session_state:
-    st.session_state.prediction_date_df = pd.DataFrame({})
-
-st.session_state.prediction_date_df = SQL_prediction_date()
+if "prediction_date_df" not in st.session_state:
+    # st.session_state.prediction_date_df = pd.DataFrame({})
+    st.session_state.prediction_date_df = SQL_prediction_date()
+else:
+    pass
 
 if "time_range" not in st.session_state:
     st.session_state.time_range = ''
@@ -123,13 +124,13 @@ st.write(
 # ------------------------------------------------------------------------- #
 # -------------------  LOCATION FROM BROWSER ------------------------------ #
 # ------------------------------------------------------------------------- #
-'''
-Here we'll rely on a JS action to obtain the coordinates from the user's browser.
-We need to rely on the browser, otherwise we'll get coordinate from the dyno
-location where Heroku has hosted our app.
+# '''
+# Here we'll rely on a JS action to obtain the coordinates from the user's browser.
+# We need to rely on the browser, otherwise we'll get coordinate from the dyno
+# location where Heroku has hosted our app.
 
-By creating a button, we can trigger a custom event to generate the coords.
-'''
+# By creating a button, we can trigger a custom event to generate the coords.
+# '''
 
 
 loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
@@ -199,7 +200,7 @@ if result:
         for index,row in results_df.iterrows():
             folium.Marker(
                 location=[row.latitude, row.longitude],
-                popup=f'Predicted Taxi Count here: {row.prediction}',
+                popup=f'Predicted Taxi Count Here: {row.prediction}',
                 icon=folium.Icon(color=color_guide(row.prediction),
                                  icon="car"),
             ).add_to(m)
