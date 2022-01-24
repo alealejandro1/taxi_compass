@@ -37,6 +37,7 @@ def trigger_prediction_in_GCP():
     r = requests.post(
         'https://asia-southeast1-taxi-compass-lewagon.cloudfunctions.net/insert_predicted_count',
         json={})
+    st.write(r.text)
 
 
 # @st.cache()
@@ -146,7 +147,7 @@ if "time_range" not in st.session_state:
 # by ticking this, you will receive a random coordinate in Singapore.
 
 
-if st.checkbox('Use a random location in Singapore'):
+if st.checkbox('Use a random location in Singapore (refresh before trying)'):
     st.session_state.random_location = True
     st.write('''
         You will receive a random location in Singapore.
@@ -163,12 +164,12 @@ if sum(st.session_state.prediction_date_df['pred_dates'] > datetime.now()) < 1:
     # need to run predictions
     st.write('''
              It appears there no predictions available at this time, would you
-             like to make a prediction? should take 5 minutes or so. You can
-             come back after a while to check.
+             like to make a prediction? You'll need to wait ~15 seconds
+             and refresh the page to see the predictions.
              ''')
     if st.button('Make Predictions'):
         trigger_prediction_in_GCP()
-        st.write('Predictions are being calculate now, please refresh in 5 minutes.')
+        st.write('Predictions should be available shortly! Refresh in 10 seconds.')
 
 else:
     ### Radio Button for search range
