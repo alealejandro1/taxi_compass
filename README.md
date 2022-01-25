@@ -1,74 +1,61 @@
-# Data analysis
-- Document here the project: taxi_compass
-- Description: Project Description
-- Data Source:
-- Type of analysis:
+# Hello 👋
+Welcome to the taxi-compass project created during the 24-week LeWagon
+Part Time Data Science bootcamp (Sep '21 - Jan '22). What you see here is a
+working version of a solution we put together to address
+the question that many taxi drivers face: "Where should I go to find riders?" 🤔
 
-Please document the project the better you can.
+## 🚕 Finding Empty Taxi Stands
+In order to answer that question, we rely on publicly available data in
+Singapore, ranging from taxi coordinates, to rainfall and even MRT disruptions. The
+solution uses all this data to make a prediction on the expected amount
+of available taxis in the vecinity of nearby taxi stands. This way, taxi drivers can make decisions
+on where to drive towards and which taxi stands to avoid. 🙌
 
-# Startup the project
+![folium_map](./assets/images/folium-map.png)
 
-The initial setup.
 
-Create virtualenv and install the project:
-```bash
-sudo apt-get install virtualenv python-pip python-dev
-deactivate; virtualenv ~/venv ; source ~/venv/bin/activate ;\
-    pip install pip -U; pip install -r requirements.txt
-```
+# Technical Details 📻
 
-Unittest test:
-```bash
-make clean install test
-```
+## ☁️ Cloud Infra
+* GCP is where the backend is hosted, mainly relying on Cloud Functions for the
+many API calls (serverless with cron).
+* Big Query is the table technology we used
+to store the data we are scraping (all available taxi coordinates once per minute).
+* Machine learning model is loaded on a GCP bucket and is called to make predictions on-demand.
 
-Check for taxi_compass in gitlab.com/{group}.
-If your project is not set please add it:
+## 📺 Front End
+* Frontend was developed using Streamlit and Folium, hosted on Heroku.
+Streamlit is very easy to use and for a simple solution like this one, the performance is acceptable.
 
-- Create a new project on `gitlab.com/{group}/taxi_compass`
-- Then populate it:
+## 🧠 Predictions
+* Machine Learning predictions run on XGBoost Classifier to deal with class imbalance.
+* The model has been trained offline using a week of data. Ideally, you would re-train and re-upload the model every week or so, especially if you are hitting the holidays or some nation wide event that changes the movement of large amounts of people #Omicron.
 
-```bash
-##   e.g. if group is "{group}" and project_name is "taxi_compass"
-git remote add origin git@github.com:{group}/taxi_compass.git
-git push -u origin master
-git push -u origin --tags
-```
 
-Functionnal test with a script:
+## Warning 🚨
+You actually cannot run this code locally, most of the files are actually running in GCP or Heroku. Plus you'll need GCP credentials (not included here).
 
-```bash
-cd
-mkdir tmp
-cd tmp
-taxi_compass-run
-```
+## ⚡️ We are Live
+This app is live, so if you are a driver looking for empty taxi stands nearby
+or a rider, looking for lots of available taxis, do give it a try!
 
-# Install
 
-Go to `https://github.com/{group}/taxi_compass` to see the project, manage issues,
-setup you ssh public key, ...
+# Caveats 🕵️‍♀️
+## 💰 Cloud is expensive
+The cost of periodic calls to cloud services piles up quickly, so we are no longer running the predictions every 15 minutes. If you want to use the app,
+you'll need to make the predictions on demand (takes about 20 seconds) and then refresh the page
+to see the predictions.
 
-Create a python3 virtualenv and activate it:
+## 📍 Geolocation
+Because of geolocation in your browser, this app only works in Singapore. If you want
+to test this out from overseas, please tick the box to obtain a random location in Singapore before starting.
+This way you'll get to experience it from anywhere in the world!
 
-```bash
-sudo apt-get install virtualenv python-pip python-dev
-deactivate; virtualenv -ppython3 ~/venv ; source ~/venv/bin/activate
-```
+![random_location](./assets/images/front-end-make-prediction.png)
 
-Clone the project and install it:
+## 🦖  Sleeping Dynos
+Heroku free dynos go to sleep when unused, so you might experience very slow response if you launch the app when is unused for over 30 minutes.
+Just be patient, it will load eventually! Once its warm, speed should be way better.
 
-```bash
-git clone git@github.com:{group}/taxi_compass.git
-cd taxi_compass
-pip install -r requirements.txt
-make clean install test                # install and test
-```
-Functionnal test with a script:
-
-```bash
-cd
-mkdir tmp
-cd tmp
-taxi_compass-run
-```
+### Hope you enjoy it! 🌈🦄
+### *Team Taxi-Compass*
