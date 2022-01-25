@@ -11,6 +11,8 @@ solution uses all this data to make a prediction on the expected amount
 of available taxis in the vecinity of nearby taxi stands. This way, taxi drivers can make decisions
 on where to drive towards and which taxi stands to avoid. 🙌
 
+Try the app *now* by clicking this [LINK](https://www.taxi-compass.herokuapp.com). Note that you'll need to grant location access to your browser.
+
 ![folium_map](./assets/images/folium-map.png)
 
 
@@ -23,7 +25,7 @@ many API calls (serverless with cron).
 to store the data we are scraping (all available taxi coordinates once per minute).
 * Machine learning model is loaded on a GCP bucket and is called to make predictions on-demand.
 
-## 📺 Front End
+## 📺  Front End
 * Frontend was developed using Streamlit and Folium, hosted on Heroku.
 Streamlit is very easy to use and for a simple solution like this one, the performance is acceptable.
 
@@ -32,12 +34,12 @@ Streamlit is very easy to use and for a simple solution like this one, the perfo
 * The model has been trained offline using a week of data. Ideally, you would re-train and re-upload the model every week or so, especially if you are hitting the holidays or some nation wide event that changes the movement of large amounts of people #Omicron.
 
 
-## Warning 🚨
+## 🚨 Warning
 You actually cannot run this code locally, most of the files are actually running in GCP or Heroku. Plus you'll need GCP credentials (not included here).
 
 ## ⚡️ We are Live
 This app is live, so if you are a driver looking for empty taxi stands nearby
-or a rider, looking for lots of available taxis, do give it a try!
+or a rider, looking for lots of available taxis, do give it a try! Link is >>>>>> [HERE](https://www.taxi-compass.herokuapp.com) <<<<<<<
 
 
 # Caveats 🕵️‍♀️
