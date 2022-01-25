@@ -11,7 +11,7 @@ solution uses all this data to make a prediction on the expected amount
 of available taxis in the vecinity of nearby taxi stands. This way, taxi drivers can make decisions
 on where to drive towards and which taxi stands to avoid. 🙌
 
-Try the app *now* by clicking this [LINK](https://www.taxi-compass.herokuapp.com). Note that you'll need to grant location access to your browser.
+Try the app *now* by clicking this [LINK](https://taxi-compass.herokuapp.com/). Note that you'll need to grant location access to your browser.
 
 ![folium_map](./assets/images/folium-map.png)
 
@@ -39,7 +39,7 @@ You actually cannot run this code locally, most of the files are actually runnin
 
 ## ⚡️ We are Live
 This app is live, so if you are a driver looking for empty taxi stands nearby
-or a rider, looking for lots of available taxis, do give it a try! Link is >>>>>> [HERE](https://www.taxi-compass.herokuapp.com) <<<<<<<
+or a rider, looking for lots of available taxis, do give it a try! Link is >>>>>> [HERE](https://taxi-compass.herokuapp.com/) <<<<<<<
 
 
 # Caveats 🕵️‍♀️
