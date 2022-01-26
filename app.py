@@ -147,7 +147,7 @@ if "time_range" not in st.session_state:
 # by ticking this, you will receive a random coordinate in Singapore.
 
 
-if st.checkbox('Use a random location in Singapore (refresh before trying)'):
+if st.checkbox('Use a random location in Singapore'):
     st.session_state.random_location = True
     st.write('''
         You will receive a random location in Singapore.
