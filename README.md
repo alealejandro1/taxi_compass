@@ -1,74 +1,68 @@
-# Data analysis
-- Document here the project: taxi_compass
-- Description: Project Description
-- Data Source:
-- Type of analysis:
+# Hello 👋
+Welcome to the taxi-compass project created during the 24-week LeWagon
+Part Time Data Science bootcamp (Aug '21 - Jan '22). What you see here is a
+working version of a solution we put together to address
+the question that many taxi drivers face: "Where should I go to find riders?" 🤔
 
-Please document the project the better you can.
+## 🚕 Finding Empty Taxi Stands
+In order to answer that question, we rely on publicly available data in
+Singapore, ranging from taxi coordinates, to rainfall and even MRT disruptions. The
+solution uses all this data to make a prediction on the expected amount
+of available taxis in the vecinity of nearby taxi stands. This way, taxi drivers can make decisions
+on where to drive towards and which taxi stands to avoid. 🙌
 
-# Startup the project
+Try the app *now* by clicking this [LINK](https://taxi-compass.herokuapp.com/). Note that you'll need to grant location access to your browser.
 
-The initial setup.
+![folium_map](./assets/images/folium-map.png)
 
-Create virtualenv and install the project:
-```bash
-sudo apt-get install virtualenv python-pip python-dev
-deactivate; virtualenv ~/venv ; source ~/venv/bin/activate ;\
-    pip install pip -U; pip install -r requirements.txt
-```
 
-Unittest test:
-```bash
-make clean install test
-```
+# Technical Details 📻
 
-Check for taxi_compass in gitlab.com/{group}.
-If your project is not set please add it:
+## 🚜 Data Preprocessing
+* Data features collected include taxi availability and locations, taxi stands locations, precipitation and MRT availability, using publicly available API from [LTA DataMall](https://datamall.lta.gov.sg/) and [data.gov.sg](data.gov.sg)
 
-- Create a new project on `gitlab.com/{group}/taxi_compass`
-- Then populate it:
+* Historical data collected was joined on timestamp to form our main dataset for predictions of taxi availabilities
 
-```bash
-##   e.g. if group is "{group}" and project_name is "taxi_compass"
-git remote add origin git@github.com:{group}/taxi_compass.git
-git push -u origin master
-git push -u origin --tags
-```
+## ☁️ Cloud Infra
+* GCP is where the backend is hosted, mainly relying on Cloud Functions for the
+many API calls (serverless with cron).
+* Big Query is the table technology we used
+to store the data we are scraping (all available taxi coordinates once per minute).
+* Machine learning model is loaded on a GCP bucket and is called to make predictions on-demand.
 
-Functionnal test with a script:
+## 📺  Front End
+* Frontend was developed using Streamlit and Folium, hosted on Heroku.
+Streamlit is very easy to use and for a simple solution like this one, the performance is acceptable.
 
-```bash
-cd
-mkdir tmp
-cd tmp
-taxi_compass-run
-```
+## 🧠 Predictions
+* Machine Learning predictions run on XGBoost Classifier to deal with class imbalance. We tested a variety of classification models (RNN, RandomForest; Regressors & Classification), but landed on XGB Classifier still as it gave the best accuracy.
+* The model has been trained offline using just 1 week of data. Ideally, you would re-train and re-upload the model as your stored data expands, especially if you are hitting the holidays or some nation wide event that changes the usual movement of large amounts of people #Omicron.
 
-# Install
+## 🚨 Warning
+You actually cannot run this code locally, most of the files are actually running in GCP or Heroku. Plus you'll need GCP credentials (not included here).
 
-Go to `https://github.com/{group}/taxi_compass` to see the project, manage issues,
-setup you ssh public key, ...
+## ⚡️ We Are Live
+This app is live, so if you are a driver looking for empty taxi stands nearby
+or a rider, looking for lots of available taxis, do give it a try! Link is >>>>>> [HERE](https://taxi-compass.herokuapp.com/) <<<<<<<
 
-Create a python3 virtualenv and activate it:
+## Summary Tech Stack
+![tech_stack](./assets/images/tech-stack.png)
+# Caveats 🕵️‍♀️
+## 💰 Cloud is expensive
+The cost of periodic calls to cloud services piles up quickly, so we are no longer running the predictions every 15 minutes. If you want to use the app,
+you'll need to make the predictions on demand (takes about 20 seconds) and then refresh the page
+to see the predictions.
 
-```bash
-sudo apt-get install virtualenv python-pip python-dev
-deactivate; virtualenv -ppython3 ~/venv ; source ~/venv/bin/activate
-```
+## 📍 Geolocation
+Because of geolocation in your browser, this app only works in Singapore. If you want
+to test this out from overseas, please tick the box to obtain a random location in Singapore before starting.
+This way you'll get to experience it from anywhere in the world!
 
-Clone the project and install it:
+![random_location](./assets/images/front-end-make-prediction.png)
 
-```bash
-git clone git@github.com:{group}/taxi_compass.git
-cd taxi_compass
-pip install -r requirements.txt
-make clean install test                # install and test
-```
-Functionnal test with a script:
+## 🦖  Sleeping Dynos
+Heroku free dynos go to sleep when unused, so you might experience very slow response if you launch the app when is unused for over 30 minutes.
+Just be patient, it will load eventually! Once its warm, speed should be way better.
 
-```bash
-cd
-mkdir tmp
-cd tmp
-taxi_compass-run
-```
+### Hope you enjoy it! 🌈🦄
+### *Team Taxi-Compass*
