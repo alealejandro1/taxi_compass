@@ -13,7 +13,34 @@ from streamlit_bokeh_events import streamlit_bokeh_events
 from branca.element import Template, MacroElement
 
 
-@st.cache()
+def random_location_in_sg():
+    '''
+    Returns random latitude and longitude within Singapore. Useful when testing
+    the app from outside SG.
+    '''
+    tmp_lat = 1.285 + np.random.random() * 0.12
+    tmp_lon = 103.74 + np.random.random() * 0.12
+    return [tmp_lat, tmp_lon]
+
+
+def trigger_prediction_in_GCP():
+    '''
+    Cloud is expensive, so instead of running our compute service to make
+    new predictions every 10minutes, we'll be using a button to request
+    for new predictions to be made. Once they are done, these will be available
+    to use on the app.
+
+    This function contains the API call to the GCP Cloud Function
+    called "insert_predicted_count_auto" which is the one
+    that performs the predictions and stores them on a Big Query table.
+    '''
+    r = requests.post(
+        'https://asia-southeast1-taxi-compass-lewagon.cloudfunctions.net/insert_predicted_count',
+        json={})
+    st.write(r.text)
+
+
+# @st.cache()
 def SQL_prediction_date():
     '''
     Upon starting, take the distinct available dates for prediction.
@@ -78,11 +105,11 @@ def color_guide(count):
 # ------------------------------------------------------------------------- #
 # ----------------------  BIG QUERY SETUP --------------------------------- #
 # ------------------------------------------------------------------------- #
-'''
-Relying on buildpacks and environmental variables in Heroku, it is possible
-to generate credentials so as to load them and provide the big query client
-the json file needed to allow working in the project
-'''
+# '''
+# Relying on buildpacks and environmental variables in Heroku, it is possible
+# to generate credentials so as to load them and provide the big query client
+# the json file needed to allow working in the project
+# '''
 bq_key_path = 'google-credentials.json'  ## Env variable in Heroku
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
 bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
@@ -91,124 +118,168 @@ bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 # ------------------------------------------------------------------------- #
 # --------------------------  STREAMLIT ----------------------------------- #
 # ------------------------------------------------------------------------- #
-'''
-Besides the markdown, variables are saved in session_state to avoid
-losing date in between radio button clicks in Streamlit.
-'''
+# '''
+# Besides the markdown, variables are saved in session_state to avoid
+# losing date in between radio button clicks in Streamlit.
+# '''
 
 st.markdown("""# Taxi Compass
 ## What is the taxi count in nearby taxi stands?""")
 if "coordinates" not in st.session_state:
     st.session_state.coordinates = ()
 
-if "prediction_date" not in st.session_state:
-    st.session_state.prediction_date_df = pd.DataFrame({})
+if "random_location" not in st.session_state:
+    st.session_state.random_location = False
 
-st.session_state.prediction_date_df = SQL_prediction_date()
+if "prediction_date_df" not in st.session_state:
+    # st.session_state.prediction_date_df = pd.DataFrame({})
+    st.session_state.prediction_date_df = SQL_prediction_date()
+else:
+    pass
 
 if "time_range" not in st.session_state:
     st.session_state.time_range = ''
 
-### Radio Button for search range
-time_range_df = st.session_state.prediction_date_df
-st.session_state.time_range = st.selectbox(
-    'Select what time in the future you want to predict', time_range_df)
+# ------------------------------------------------------------------------- #
+# -------------------  INTERNATIONAL AUDIENCE ----------------------------- #
+# ------------------------------------------------------------------------- #
+# If you are not in Singapore or want to try different locations,
+# by ticking this, you will receive a random coordinate in Singapore.
 
-taxi_length = 20
-st.write(
-    f'You will be getting the nearest {taxi_length} taxi stops at {st.session_state.time_range}'
-)
-###
+
+if st.checkbox('Use a random location in Singapore'):
+    st.session_state.random_location = True
+    st.write('''
+        You will receive a random location in Singapore.
+        ''')
+
 
 # ------------------------------------------------------------------------- #
-# -------------------  LOCATION FROM BROWSER ------------------------------ #
+# -------------------  ON-DEMAND PREDICTIONS ------------------------------ #
 # ------------------------------------------------------------------------- #
-'''
-Here we'll rely on a JS action to obtain the coordinates from the user's browser.
-We need to rely on the browser, otherwise we'll get coordinate from the dyno
-location where Heroku has hosted our app.
+# If no predictions available, offer to make predictions.
+# If there are predictions available, proceed to get location and show map
 
-By creating a button, we can trigger a custom event to generate the coords.
-'''
+if sum(st.session_state.prediction_date_df['pred_dates'] > datetime.now()) < 1:
+    # need to run predictions
+    st.write('''
+             It appears there no predictions available at this time, would you
+             like to make a prediction? You'll need to wait ~15 seconds
+             and refresh the page to see the predictions.
+             ''')
+    if st.button('Make Predictions'):
+        trigger_prediction_in_GCP()
+        st.write('Predictions should be available shortly! Refresh in 10 seconds.')
 
+else:
+    ### Radio Button for search range
+    time_range_df = st.session_state.prediction_date_df
+    st.session_state.time_range = st.selectbox(
+        'Select what time in the future you want to predict', time_range_df)
 
-loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
-loc_button.js_on_event(
-    "button_click",
-    CustomJS(code="""
-    navigator.geolocation.getCurrentPosition(
-        (loc) => {
-            document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
-        }
+    taxi_length = 20
+    st.write(
+        f'You will be getting the nearest {taxi_length} taxi stops at {st.session_state.time_range}'
     )
-    """))
-result = streamlit_bokeh_events(loc_button,
-                                events="GET_LOCATION",
-                                key="get_location",
-                                refresh_on_update=False,
-                                override_height=75,
-                                debounce_time=0)
+    ###
 
-if result:
-    if "GET_LOCATION" in result:
-        coordinates = result.get("GET_LOCATION")
-        st.write(f'Location obtained!')
-        st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
+    # ------------------------------------------------------------------------- #
+    # -------------------  LOCATION FROM BROWSER ------------------------------ #
+    # ------------------------------------------------------------------------- #
+    # '''
+    # Here we'll rely on a JS action to obtain the coordinates from the user's browser.
+    # We need to rely on the browser, otherwise we'll get coordinate from the dyno
+    # location where Heroku has hosted our app.
 
-        # ------------------------------------------------------------------ #
-        # ----------------------- GET LATs AND LONs ------------------------ #
-        # ------------------------------------------------------------------ #
+    # By creating a button, we can trigger a custom event to generate the coords.
+    # '''
 
-        # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
-        # SQL query from prediction table, filter by Nearby Taxi Stands
 
-        st.write(f'The following are your nearby taxi stands \
-                    predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  )
-        ## First get nearby taxi stands using the cloud function tsfinder:
-        ## Amount of taxi stands returned is computed on tsfinder cloud function
-        ## using taxi_length parameter in POST
-        r = requests.post(
-            'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
-            json={
-                "latitude": st.session_state.coordinates[0],
-                "longitude": st.session_state.coordinates[1],
-                "length": taxi_length
-            })
-        ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
-        results_df = SQL_Query(r.text)
+    loc_button = Button(label="Using Location Get Taxis Near Me", button_type="danger")
+    loc_button.js_on_event(
+        "button_click",
+        CustomJS(code="""
+        navigator.geolocation.getCurrentPosition(
+            (loc) => {
+                document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
+            }
+        )
+        """))
+    result = streamlit_bokeh_events(loc_button,
+                                    events="GET_LOCATION",
+                                    key="get_location",
+                                    refresh_on_update=False,
+                                    override_height=75,
+                                    debounce_time=0)
 
-        # ------------------------------------------------------------------ #
-        # -------------------- CREATION OF FOLIUM MAP ---------------------- #
-        # ------------------------------------------------------------------ #
+    if result:
+        if "GET_LOCATION" in result:
+            coordinates = result.get("GET_LOCATION")
+            st.write(f'Location obtained!')
+            st.session_state.coordinates = [coordinates['lat'],coordinates['lon']]
 
-        m = folium.Map(location=[
-            st.session_state.coordinates[0], st.session_state.coordinates[1]
-        ],
-                       zoom_start=14,
-                       tiles='openstreetmap')
+            if st.session_state.random_location == True:
+                st.session_state.coordinates = random_location_in_sg()
+                st.write(
+                    f'You were assigned a random lat,lon : {st.session_state.coordinates}'
+                )
+            else:
+                pass
 
-        folium.Marker(
-            location=[
-                st.session_state.coordinates[0],
-                st.session_state.coordinates[1]
+            # ------------------------------------------------------------------ #
+            # ----------------------- GET LATs AND LONs ------------------------ #
+            # ------------------------------------------------------------------ #
+
+            # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
+            # SQL query from prediction table, filter by Nearby Taxi Stands
+
+            st.write(f'The following are your nearby taxi stands \
+                        predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             )
+            ## First get nearby taxi stands using the cloud function tsfinder:
+            ## Amount of taxi stands returned is computed on tsfinder cloud function
+            ## using taxi_length parameter in POST
+            r = requests.post(
+                'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
+                json={
+                    "latitude": st.session_state.coordinates[0],
+                    "longitude": st.session_state.coordinates[1],
+                    "length": taxi_length
+                })
+            ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
+            results_df = SQL_Query(r.text)
+
+            # ------------------------------------------------------------------ #
+            # -------------------- CREATION OF FOLIUM MAP ---------------------- #
+            # ------------------------------------------------------------------ #
+
+            m = folium.Map(location=[
+                st.session_state.coordinates[0], st.session_state.coordinates[1]
             ],
-            popup='You are here',
-            icon=folium.Icon(color="red", icon="car", prefix='fa'),
-        ).add_to(m)
+                        zoom_start=14,
+                        tiles='openstreetmap')
 
-        for index,row in results_df.iterrows():
             folium.Marker(
-                location=[row.latitude, row.longitude],
-                popup=f'Predicted Taxi Count here: {row.prediction}',
-                icon=folium.Icon(color=color_guide(row.prediction),
-                                 icon="car"),
+                location=[
+                    st.session_state.coordinates[0],
+                    st.session_state.coordinates[1]
+                ],
+                popup='You are here',
+                icon=folium.Icon(color="red", icon="car", prefix='fa'),
             ).add_to(m)
 
-        # ------------------------------------------------------------------ #
-        # -------------------- HTML for FOLIUM LEGEND ---------------------- #
-        # ------------------------------------------------------------------ #
+            for index,row in results_df.iterrows():
+                folium.Marker(
+                    location=[row.latitude, row.longitude],
+                    popup=f'Predicted Taxi Count Here: {row.prediction}',
+                    icon=folium.Icon(color=color_guide(row.prediction),
+                                    icon="car"),
+                ).add_to(m)
 
-        template = """
+            # ------------------------------------------------------------------ #
+            # -------------------- HTML for FOLIUM LEGEND ---------------------- #
+            # ------------------------------------------------------------------ #
+
+            template = """
 {% macro html(this, kwargs) %}
 
 <!doctype html>
@@ -301,12 +372,12 @@ if result:
 </style>
 {% endmacro %}"""
 
-        macro = MacroElement()
-        macro._template = Template(template)
+            macro = MacroElement()
+            macro._template = Template(template)
 
-        # m.get_root().add_child(macro)
-        macro.add_to(m)
+            # m.get_root().add_child(macro)
+            macro.add_to(m)
 
-        ###
+            ###
 
-        folium_static(m)
+            folium_static(m)

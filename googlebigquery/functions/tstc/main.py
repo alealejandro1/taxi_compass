@@ -5,7 +5,6 @@ import requests
 from datetime import datetime, timedelta
 from google.cloud import bigquery, storage
 
-
 def get_taxi_stands(taxi_stands_json):
     '''
     Parse the geojson with taxi stands into a set of taxi stand id and lat,lon
@@ -94,14 +93,6 @@ def count_taxis_in_ts(ts_df):
     Cutoff distance represents how near a taxi to a taxi stand is consider
     inside the taxi stand. Cutoff distance of 0.1 represents 100m = 0.1km
     '''
-
-    ### Older method using GOV.SG API, no longer working
-    # taxi_url = "https://api.data.gov.sg/v1/transport/taxi-availability"
-    # r = requests.get(taxi_url)
-    # coordinates = r.json()["features"][0]["geometry"]["coordinates"]
-    # timestamp_str = r.json()['features'][0]['properties']['timestamp']
-    # timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S+08:00')
-
     coordinates=get_taxi_coordinates_from_lta()
     timestamp = datetime.now() + timedelta(hours=8) # Singapore time
 
@@ -125,7 +116,6 @@ def count_taxis_in_ts(ts_df):
         0: 'taxi_count',
         'index': 'ts_id'
     })
-    # tmp_taxi_stand_counter
     return ts_df.merge(tmp_taxi_stand_counter)
 
 
