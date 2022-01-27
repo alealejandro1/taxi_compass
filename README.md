@@ -1,6 +1,6 @@
 # Hello 👋
 Welcome to the taxi-compass project created during the 24-week LeWagon
-Part Time Data Science bootcamp (Sep '21 - Jan '22). What you see here is a
+Part Time Data Science bootcamp (Aug '21 - Jan '22). What you see here is a
 working version of a solution we put together to address
 the question that many taxi drivers face: "Where should I go to find riders?" 🤔
 
@@ -18,6 +18,11 @@ Try the app *now* by clicking this [LINK](https://taxi-compass.herokuapp.com/). 
 
 # Technical Details 📻
 
+## 🚜 Data Preprocessing
+* Data features collected include taxi availability and locations, taxi stands locations, precipitation and MRT availability, using publicly available API from [LTA DataMall](https://datamall.lta.gov.sg/) and [data.gov.sg](data.gov.sg)
+
+* Historical data collected was joined on timestamp to form our main dataset for predictions of taxi availabilities
+
 ## ☁️ Cloud Infra
 * GCP is where the backend is hosted, mainly relying on Cloud Functions for the
 many API calls (serverless with cron).
@@ -30,18 +35,18 @@ to store the data we are scraping (all available taxi coordinates once per minut
 Streamlit is very easy to use and for a simple solution like this one, the performance is acceptable.
 
 ## 🧠 Predictions
-* Machine Learning predictions run on XGBoost Classifier to deal with class imbalance.
-* The model has been trained offline using a week of data. Ideally, you would re-train and re-upload the model every week or so, especially if you are hitting the holidays or some nation wide event that changes the movement of large amounts of people #Omicron.
-
+* Machine Learning predictions run on XGBoost Classifier to deal with class imbalance. We tested a variety of classification models (RNN, RandomForest; Regressors & Classification), but landed on XGB Classifier still as it gave the best accuracy.
+* The model has been trained offline using just 1 week of data. Ideally, you would re-train and re-upload the model as your stored data expands, especially if you are hitting the holidays or some nation wide event that changes the usual movement of large amounts of people #Omicron.
 
 ## 🚨 Warning
 You actually cannot run this code locally, most of the files are actually running in GCP or Heroku. Plus you'll need GCP credentials (not included here).
 
-## ⚡️ We are Live
+## ⚡️ We Are Live
 This app is live, so if you are a driver looking for empty taxi stands nearby
 or a rider, looking for lots of available taxis, do give it a try! Link is >>>>>> [HERE](https://taxi-compass.herokuapp.com/) <<<<<<<
 
-
+## Summary Tech Stack
+![tech_stack](./assets/images/tech-stack.png)
 # Caveats 🕵️‍♀️
 ## 💰 Cloud is expensive
 The cost of periodic calls to cloud services piles up quickly, so we are no longer running the predictions every 15 minutes. If you want to use the app,
