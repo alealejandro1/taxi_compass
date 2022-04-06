@@ -13,6 +13,9 @@ from streamlit_bokeh_events import streamlit_bokeh_events
 from branca.element import Template, MacroElement
 
 
+st.markdown("# Taxi Compass is no longer online! You missed it, but it was great while it lasted")
+st.markdown("On 6 April 2022 we've disabled the google cloud services ($$$), so what you can see below is just the map")
+
 def random_location_in_sg():
     '''
     Returns random latitude and longitude within Singapore. Useful when testing
@@ -110,9 +113,9 @@ def color_guide(count):
 # to generate credentials so as to load them and provide the big query client
 # the json file needed to allow working in the project
 # '''
-bq_key_path = 'google-credentials.json'  ## Env variable in Heroku
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
-bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
+# bq_key_path = 'google-credentials.json'  ## Env variable in Heroku
+# os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = bq_key_path
+# bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 
 
 # ------------------------------------------------------------------------- #
@@ -123,22 +126,22 @@ bigquery_client = bigquery.Client(project='taxi-compass-lewagon')
 # losing date in between radio button clicks in Streamlit.
 # '''
 
-st.markdown("""# Taxi Compass
-## What is the taxi count in nearby taxi stands?""")
-if "coordinates" not in st.session_state:
-    st.session_state.coordinates = ()
+# st.markdown("""# Taxi Compass
+# ## What is the taxi count in nearby taxi stands?""")
+# if "coordinates" not in st.session_state:
+#     st.session_state.coordinates = ()
 
-if "random_location" not in st.session_state:
-    st.session_state.random_location = False
+# if "random_location" not in st.session_state:
+#     st.session_state.random_location = False
 
-if "prediction_date_df" not in st.session_state:
-    # st.session_state.prediction_date_df = pd.DataFrame({})
-    st.session_state.prediction_date_df = SQL_prediction_date()
-else:
-    pass
+# if "prediction_date_df" not in st.session_state:
+#     # st.session_state.prediction_date_df = pd.DataFrame({})
+#     st.session_state.prediction_date_df = SQL_prediction_date()
+# else:
+#     pass
 
-if "time_range" not in st.session_state:
-    st.session_state.time_range = ''
+# if "time_range" not in st.session_state:
+#     st.session_state.time_range = ''
 
 # ------------------------------------------------------------------------- #
 # -------------------  INTERNATIONAL AUDIENCE ----------------------------- #
@@ -160,27 +163,27 @@ if st.checkbox('Use a random location in Singapore'):
 # If no predictions available, offer to make predictions.
 # If there are predictions available, proceed to get location and show map
 
-if sum(st.session_state.prediction_date_df['pred_dates'] > datetime.now()) < 1:
-    # need to run predictions
-    st.write('''
-             It appears there no predictions available at this time, would you
-             like to make a prediction? You'll need to wait ~15 seconds
-             and refresh the page to see the predictions.
-             ''')
-    if st.button('Make Predictions'):
-        trigger_prediction_in_GCP()
-        st.write('Predictions should be available shortly! Refresh in 10 seconds.')
+# if sum(st.session_state.prediction_date_df['pred_dates'] > datetime.now()) < 1:
+#     # need to run predictions
+#     st.write('''
+#              It appears there no predictions available at this time, would you
+#              like to make a prediction? You'll need to wait ~15 seconds
+#              and refresh the page to see the predictions.
+#              ''')
+#     if st.button('Make Predictions'):
+#         trigger_prediction_in_GCP()
+#         st.write('Predictions should be available shortly! Refresh in 10 seconds.')
 
-else:
-    ### Radio Button for search range
-    time_range_df = st.session_state.prediction_date_df
-    st.session_state.time_range = st.selectbox(
-        'Select what time in the future you want to predict', time_range_df)
+# else:
+#     ### Radio Button for search range
+#     time_range_df = st.session_state.prediction_date_df
+#     st.session_state.time_range = st.selectbox(
+#         'Select what time in the future you want to predict', time_range_df)
 
-    taxi_length = 20
-    st.write(
-        f'You will be getting the nearest {taxi_length} taxi stops at {st.session_state.time_range}'
-    )
+#     taxi_length = 20
+#     st.write(
+#         f'You will be getting the nearest {taxi_length} taxi stops at {st.session_state.time_range}'
+#     )
     ###
 
     # ------------------------------------------------------------------------- #
@@ -226,27 +229,7 @@ else:
             else:
                 pass
 
-            # ------------------------------------------------------------------ #
-            # ----------------------- GET LATs AND LONs ------------------------ #
-            # ------------------------------------------------------------------ #
 
-            # Use Lat Long to retrieve nearby Taxi Stands in a taxi_stand_tuple
-            # SQL query from prediction table, filter by Nearby Taxi Stands
-
-            st.write(f'The following are your nearby taxi stands \
-                        predicted taxi count'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             )
-            ## First get nearby taxi stands using the cloud function tsfinder:
-            ## Amount of taxi stands returned is computed on tsfinder cloud function
-            ## using taxi_length parameter in POST
-            r = requests.post(
-                'https://us-central1-taxi-compass-lewagon.cloudfunctions.net/tsfinder',
-                json={
-                    "latitude": st.session_state.coordinates[0],
-                    "longitude": st.session_state.coordinates[1],
-                    "length": taxi_length
-                })
-            ## Pass the list of $taxi_length nearby taxistands to perform the SQL Query
-            results_df = SQL_Query(r.text)
 
             # ------------------------------------------------------------------ #
             # -------------------- CREATION OF FOLIUM MAP ---------------------- #
@@ -266,14 +249,6 @@ else:
                 popup='You are here',
                 icon=folium.Icon(color="red", icon="car", prefix='fa'),
             ).add_to(m)
-
-            for index,row in results_df.iterrows():
-                folium.Marker(
-                    location=[row.latitude, row.longitude],
-                    popup=f'Predicted Taxi Count Here: {row.prediction}',
-                    icon=folium.Icon(color=color_guide(row.prediction),
-                                    icon="car"),
-                ).add_to(m)
 
             # ------------------------------------------------------------------ #
             # -------------------- HTML for FOLIUM LEGEND ---------------------- #
